@@ -1,0 +1,1536 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>성냥개비 퍼즐 (Matchstick Puzzle)</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Canvas Confetti CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+KR:wght@400;600;700;800&display=swap');
+    
+    * {
+      -webkit-tap-highlight-color: transparent;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', 'Noto Sans KR', sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+
+    /* 성냥개비 나무 질감 & 입체 필터 */
+    .wood-match {
+      filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.45));
+      transition: transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.16s ease;
+    }
+    .wood-match:hover {
+      filter: drop-shadow(0 6px 12px rgba(251, 191, 36, 0.55)) brightness(1.1);
+      cursor: pointer;
+    }
+
+    /* 선택된 성냥개비 황금빛 발광 효과 */
+    .match-selected {
+      filter: drop-shadow(0 0 14px rgba(245, 158, 11, 0.95)) brightness(1.3) !important;
+      animation: pulseMatch 1.3s infinite ease-in-out;
+    }
+    @keyframes pulseMatch {
+      0%, 100% { transform: scale(1.05); }
+      50% { transform: scale(1.1); }
+    }
+
+    /* 빈 슬롯 가이드 */
+    .slot-guide {
+      transition: all 0.2s ease;
+    }
+    .slot-group:hover .slot-guide {
+      stroke: #f59e0b !important;
+      stroke-width: 3px !important;
+      stroke-dasharray: 2,2 !important;
+      opacity: 0.95 !important;
+    }
+
+    /* 성공 시 긴 스틱 내부 점화 애니메이션 */
+    .stick-glow {
+      box-shadow: 0 0 18px rgba(245, 158, 11, 0.85), 0 0 32px rgba(239, 68, 68, 0.65), inset 0 0 14px rgba(254, 240, 138, 0.9);
+      animation: firePulse 1.4s infinite alternate ease-in-out;
+    }
+    @keyframes firePulse {
+      0% {
+        filter: brightness(1) drop-shadow(0 0 4px #f59e0b);
+      }
+      100% {
+        filter: brightness(1.35) drop-shadow(0 0 14px #ef4444);
+      }
+    }
+
+    /* 각 스테이지 버튼 아래 미니 스틱 점화 애니메이션 */
+    .stage-mini-stick-lit {
+      border-color: #f59e0b !important;
+      box-shadow: 0 0 8px rgba(245, 158, 11, 0.8), inset 0 0 4px rgba(254, 240, 138, 0.8);
+    }
+    .stage-mini-stick-lit .mini-stick-fill {
+      width: 100% !important;
+      background: linear-gradient(90deg, #ef4444, #f59e0b, #fde047);
+      box-shadow: 0 0 6px #f59e0b;
+    }
+
+    /* 모바일/PC 스크롤바 세련화 */
+    ::-webkit-scrollbar {
+      height: 5px;
+      width: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #1c1917;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #44403c;
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body class="bg-neutral-950 text-neutral-100 min-h-[100dvh] h-[100dvh] flex flex-col justify-between items-center px-2 py-1 sm:px-4 sm:py-2 md:px-6 md:py-2 select-none overflow-hidden">
+
+  <!-- ================= TOP UTILITY BAR ================= -->
+  <header class="w-full max-w-lg sm:max-w-xl md:max-w-2xl lg:max-w-3xl flex flex-col gap-1 pt-0.5 pb-1 border-b border-stone-800/80 shrink-0 z-20 bg-neutral-950/95">
+    <div class="flex items-center justify-between gap-1.5 sm:gap-2">
+      <!-- 로고 & 타이틀 -->
+      <div class="flex items-center gap-1.5 sm:gap-2">
+        <span class="text-base sm:text-xl">🔥</span>
+        <div>
+          <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+            <h1 class="text-xs sm:text-sm md:text-base font-extrabold tracking-tight text-amber-400 leading-tight">성냥개비 퍼즐</h1>
+            <!-- 관산중학교 학생 정보 뱃지 -->
+            <span id="studentBadge" class="hidden items-center gap-1 bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[9px] sm:text-[11px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full cursor-pointer hover:bg-amber-500/25 transition" title="클릭하여 학번/이름 수정">
+              🏫 <span id="studentDisplay">관산중</span>
+            </span>
+          </div>
+          <p id="topSubtitle" class="text-[8px] sm:text-[10px] text-stone-400 font-medium">Matchstick Logic Challenge</p>
+        </div>
+      </div>
+
+      <!-- 다국어 탭 & 사운드 토글 -->
+      <div class="flex items-center gap-1 sm:gap-1.5">
+        <!-- 다국어 선택 버튼 -->
+        <div class="bg-stone-900 p-0.5 rounded-lg sm:rounded-xl flex items-center gap-0.5 border border-stone-800">
+          <button type="button" onclick="setLanguage('en')" id="langBtn-en" class="lang-btn px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[11px] font-semibold rounded-md sm:rounded-lg transition text-stone-400 hover:text-white">EN</button>
+          <button type="button" onclick="setLanguage('zh')" id="langBtn-zh" class="lang-btn px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[11px] font-semibold rounded-md sm:rounded-lg transition text-stone-400 hover:text-white">ZH</button>
+          <button type="button" onclick="setLanguage('ru')" id="langBtn-ru" class="lang-btn px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[11px] font-semibold rounded-md sm:rounded-lg transition text-stone-400 hover:text-white">RU</button>
+        </div>
+
+        <!-- 효과음 토글 -->
+        <button id="soundToggle" type="button" class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-stone-900 border border-stone-800 flex items-center justify-center text-[10px] sm:text-xs text-stone-300 hover:bg-stone-800 transition shadow" title="Sound On/Off">
+          🔊
+        </button>
+      </div>
+    </div>
+
+    <!-- 스테이지 선택 2단 그리드 바 (5개씩 2줄) -->
+    <div class="w-full grid grid-cols-5 gap-1 pt-1 pb-0.5" id="stageBtnContainer">
+      <!-- JS에서 스테이지 버튼 동적 생성 -->
+    </div>
+  </header>
+
+  <!-- ================= MAIN PUZZLE CONTAINER ================= -->
+  <main class="w-full max-w-lg sm:max-w-xl md:max-w-2xl lg:max-w-3xl flex-1 flex flex-col items-center justify-between py-1 min-h-0 z-10 overflow-hidden">
+    <!-- 문제 영역 (한국어 메인 + 다국어 병기) -->
+    <div class="w-full bg-stone-900/90 backdrop-blur rounded-lg sm:rounded-xl px-2 py-1 sm:px-3 sm:py-1.5 mb-1 border border-stone-800 text-center shadow shrink-0">
+      <div class="inline-flex items-center gap-1 bg-amber-500/10 text-amber-400 text-[8px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full mb-0.5">
+        <span id="stageBadge">Stage 1</span>
+      </div>
+      <!-- 한국어 메인 -->
+      <h2 id="puzzleTitleKo" class="text-[11px] sm:text-sm md:text-base font-bold text-white tracking-tight leading-snug">
+        성냥개비 2개를 이동시켜 정사각형 6개로 만들어 보세요.
+      </h2>
+      <!-- 선택된 외국어 병기 -->
+      <p id="puzzleTitleSub" class="text-[9px] sm:text-[11px] md:text-xs text-stone-400 font-medium">
+        Move 2 matches to make 6 squares.
+      </p>
+    </div>
+
+    <!-- 대시보드 (진행 상황 & 카운터) -->
+    <div class="w-full grid grid-cols-2 gap-1 sm:gap-1.5 mb-1 shrink-0">
+      <!-- 이동 / 조작 횟수 -->
+      <div class="bg-stone-900/80 rounded-lg sm:rounded-xl px-2 py-1 border border-stone-800/80 flex items-center justify-between">
+        <div>
+          <span id="actionLabelKo" class="text-[9px] sm:text-[11px] font-semibold text-stone-300 block">이동 횟수</span>
+          <span id="actionLabelSub" class="text-[7px] sm:text-[9px] text-stone-500 block">Moves</span>
+        </div>
+        <div class="text-right">
+          <span id="moveCount" class="text-xs sm:text-lg font-black text-amber-400">0</span>
+          <span id="maxMoves" class="text-[9px] sm:text-[11px] text-stone-500 font-bold">/ 2</span>
+        </div>
+      </div>
+
+      <!-- 사각형 / 목표 개수 -->
+      <div class="bg-stone-900/80 rounded-lg sm:rounded-xl px-2 py-1 border border-stone-800/80 flex items-center justify-between">
+        <div>
+          <span id="targetLabelKo" class="text-[9px] sm:text-[11px] font-semibold text-stone-300 block">정사각형</span>
+          <span id="targetLabelSub" class="text-[7px] sm:text-[9px] text-stone-500 block">Squares</span>
+        </div>
+        <div class="text-right">
+          <span id="squareCount" class="text-xs sm:text-lg font-black text-emerald-400">0</span>
+          <span id="targetSquares" class="text-[9px] sm:text-[11px] text-stone-500 font-bold">/ 6</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= SVG PUZZLE BOARD ================= -->
+    <div class="w-full relative flex items-center justify-center bg-stone-900/40 rounded-xl p-1 border border-stone-800/60 shadow-xl flex-1 min-h-0 overflow-hidden" style="touch-action: manipulation;">
+      <svg id="puzzleSvg" class="w-full h-full max-w-[380px] sm:max-w-[420px] md:max-w-[440px] max-h-full aspect-square block cursor-default object-contain" viewBox="0 0 500 500">
+        <!-- SVG 그라데이션 및 텍스처 필터 정의 -->
+        <defs>
+          <!-- 성냥개비 나무 몸체 그라데이션 -->
+          <linearGradient id="matchBodyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#fde68a" />
+            <stop offset="35%" stop-color="#f59e0b" />
+            <stop offset="70%" stop-color="#d97706" />
+            <stop offset="100%" stop-color="#92400e" />
+          </linearGradient>
+
+          <!-- 성냥 머리(화약) 그라데이션 -->
+          <radialGradient id="matchHeadGrad" cx="35%" cy="35%" r="65%">
+            <stop offset="0%" stop-color="#f87171" />
+            <stop offset="45%" stop-color="#dc2626" />
+            <stop offset="85%" stop-color="#7f1d1d" />
+            <stop offset="100%" stop-color="#450a0a" />
+          </radialGradient>
+
+          <!-- 성냥개비 선택 시 골드 글로우 -->
+          <filter id="glowGold" x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur stdDeviation="5" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+
+        <!-- 배경 격자 보조 레이어 -->
+        <g id="gridDots" opacity="0.35"></g>
+
+        <!-- 감지된 정사각형 하이라이트 레이어 -->
+        <g id="squaresLayer"></g>
+
+        <!-- 슬롯(빈 점선 자리) 레이어 -->
+        <g id="slotsLayer"></g>
+
+        <!-- 성냥개비 레이어 -->
+        <g id="matchesLayer"></g>
+
+        <!-- 드래그 레이어 -->
+        <g id="dragLayer"></g>
+      </svg>
+    </div>
+
+    <!-- ================= SUCCESS INDICATOR LONG STICK ================= -->
+    <div class="w-full max-w-[440px] mt-1 px-1 shrink-0">
+      <div class="flex items-center justify-between text-[8px] sm:text-[10px] font-bold text-stone-500 mb-0.5 px-1">
+        <span class="flex items-center gap-1">
+          <span id="stickFlameIcon" class="transition-transform duration-300 scale-90 opacity-60">✨</span>
+          <span id="stickStatusText">도전 중 (In Progress)</span>
+        </span>
+        <span id="stickPercentText" class="text-amber-500/70">READY</span>
+      </div>
+
+      <!-- 테두리만 있는 긴 스틱 컨테이너 -->
+      <div id="longStickContainer" class="w-full h-3.5 sm:h-4.5 rounded-full border-2 border-dashed border-stone-700 bg-stone-900/60 p-0.5 flex items-center relative overflow-hidden transition-all duration-500 shadow-inner">
+        <!-- 스틱 내부 불빛 (성공 시 점화 및 채워짐) -->
+        <div id="longStickFill" class="h-full w-0 rounded-full transition-all duration-700 ease-out flex items-center justify-end pr-1 relative">
+          <!-- 불꽃 헤드 효과 -->
+          <div id="stickHeadSpark" class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-amber-100 shadow-[0_0_8px_#f59e0b] opacity-0 transition-opacity duration-300"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ================= BOTTOM ACTION CONTROLS ================= -->
+  <footer class="w-full max-w-lg sm:max-w-xl md:max-w-2xl lg:max-w-3xl pb-1 pt-0.5 shrink-0">
+    <div class="grid grid-cols-3 gap-1 sm:gap-1.5">
+      <!-- 실행 취소 (Undo) -->
+      <button id="undoBtn" type="button" class="group flex flex-col items-center justify-center p-1 sm:p-1.5 rounded-lg sm:rounded-xl bg-stone-900 border border-stone-800 hover:bg-stone-800 active:scale-95 transition shadow touch-manipulation">
+        <span class="text-[10px] sm:text-sm">↩️</span>
+        <span class="text-[9px] sm:text-[11px] font-bold text-stone-200">실행 취소</span>
+        <span id="subUndo" class="text-[7px] sm:text-[9px] text-stone-500">Undo (Ctrl+Z)</span>
+      </button>
+
+      <!-- 다시하기 (Reset) -->
+      <button id="resetBtn" type="button" class="group flex flex-col items-center justify-center p-1 sm:p-1.5 rounded-lg sm:rounded-xl bg-stone-900 border border-stone-800 hover:bg-stone-800 active:scale-95 transition shadow touch-manipulation">
+        <span class="text-[10px] sm:text-sm">🔄</span>
+        <span class="text-[9px] sm:text-[11px] font-bold text-stone-200">다시하기</span>
+        <span id="subReset" class="text-[7px] sm:text-[9px] text-stone-500">Reset (R)</span>
+      </button>
+
+      <!-- 정답 확인 (Check Answer) -->
+      <button id="checkBtn" type="button" class="group flex flex-col items-center justify-center p-1 sm:p-1.5 rounded-lg sm:rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 font-bold active:scale-95 transition shadow-md shadow-amber-950/40 touch-manipulation">
+        <span class="text-[10px] sm:text-sm">✨</span>
+        <span class="text-[9px] sm:text-[11px] font-extrabold text-stone-950">정답 확인</span>
+        <span id="subCheck" class="text-[7px] sm:text-[9px] text-stone-900 font-semibold">Check (Enter)</span>
+      </button>
+    </div>
+  </footer>
+
+  <!-- ================= POPUP MODAL ================= -->
+  <div id="resultModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-stone-900 border border-stone-700/80 rounded-3xl p-5 sm:p-6 max-w-sm w-full text-center shadow-2xl relative">
+      <div id="modalEmoji" class="text-4xl sm:text-5xl mb-2 sm:mb-3">🎉</div>
+      <h3 id="modalTitleKo" class="text-lg sm:text-xl font-black text-white mb-1">축하합니다!</h3>
+      <p id="modalTitleSub" class="text-xs text-amber-400 font-medium mb-3">Congratulations!</p>
+      
+      <div id="modalDescKo" class="text-stone-300 text-xs sm:text-sm mb-4 leading-relaxed font-medium"></div>
+
+      <button id="modalCloseBtn" type="button" class="w-full py-2.5 sm:py-3 bg-amber-500 hover:bg-amber-400 active:scale-95 text-stone-950 font-extrabold rounded-2xl transition shadow-lg text-xs sm:text-sm">
+        확인 (OK)
+      </button>
+    </div>
+  </div>
+
+  <!-- ================= STUDENT ENTRY MODAL (관산중학교 학번 & 이름 입력) ================= -->
+  <div id="studentEntryModal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
+    <div class="bg-stone-900 border border-amber-500/40 rounded-3xl p-5 sm:p-7 max-w-sm w-full text-center shadow-2xl relative shadow-amber-950/50">
+      <div class="w-12 h-12 sm:w-14 sm:h-14 mx-auto mb-2 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-2xl sm:text-3xl">
+        🏫
+      </div>
+      <span class="inline-block text-[11px] sm:text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 rounded-full mb-1">
+        관산중학교 수학 퍼즐 챌린지
+      </span>
+      <h3 class="text-lg sm:text-xl font-black text-white mb-1">학생 정보 입력</h3>
+      <p class="text-xs text-stone-400 mb-4">퍼즐 도전을 시작하기 위해 학번과 이름을 입력해 주세요.</p>
+
+      <form id="studentForm" class="flex flex-col gap-3 text-left">
+        <div>
+          <label for="studentIdInput" class="block text-[11px] sm:text-xs font-semibold text-stone-300 mb-1">
+            학번 (예: 10101 / 20315)
+          </label>
+          <input 
+            type="text" 
+            id="studentIdInput" 
+            placeholder="학번 입력" 
+            required 
+            maxlength="10"
+            class="w-full bg-stone-950 border border-stone-700 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl px-3 py-2.5 text-sm text-white placeholder-stone-600 outline-none transition"
+          />
+        </div>
+        <div>
+          <label for="studentNameInput" class="block text-[11px] sm:text-xs font-semibold text-stone-300 mb-1">
+            이름
+          </label>
+          <input 
+            type="text" 
+            id="studentNameInput" 
+            placeholder="이름 입력" 
+            required 
+            maxlength="10"
+            class="w-full bg-stone-950 border border-stone-700 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl px-3 py-2.5 text-sm text-white placeholder-stone-600 outline-none transition"
+          />
+        </div>
+
+        <button 
+          type="submit" 
+          class="w-full mt-2 py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 active:scale-95 text-stone-950 font-extrabold rounded-xl transition shadow-lg shadow-amber-950/50 text-sm flex items-center justify-center gap-1.5"
+        >
+          <span>🔥</span> 퍼즐 도전 시작하기
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= LOGIC SCRIPT ================= -->
+  <script>
+    // ==========================================
+    // 1. 다국어 사전 (TRANSLATIONS) & 상태 정의
+    // ==========================================
+    let currentStage = 1;
+    let currentLang = 'en';
+    let isSoundOn = true;
+    let selectedMatchKey = null;
+    let currentMatches = new Set();
+    let initialMatches = [];
+    let moveHistory = [];
+    const clearedStages = new Set();
+    let currentStudent = { id: '', name: '' };
+
+    let ALL_SLOTS = [];
+    let audioCtx = null;
+
+    const TRANSLATIONS = {
+      en: {
+        top_subtitle: "Matchstick Logic Challenge",
+        action_label_move_sub: "Moves",
+        action_label_remove_sub: "Removed",
+        action_label_add_sub: "Added",
+        target_label_sub: "Squares",
+        sub_undo: "Undo (Ctrl+Z)",
+        sub_reset: "Reset (R)",
+        sub_check: "Check (Enter)",
+        btn_confirm: "OK",
+        modal_retry_title: "Try Again!",
+        modal_success_title: "Congratulations!"
+      },
+      zh: {
+        top_subtitle: "火柴棍逻辑挑战",
+        action_label_move_sub: "移动次数",
+        action_label_remove_sub: "移除次数",
+        action_label_add_sub: "添加次数",
+        target_label_sub: "正方形",
+        sub_undo: "撤销 (Ctrl+Z)",
+        sub_reset: "重置 (R)",
+        sub_check: "验证 (Enter)",
+        btn_confirm: "确认",
+        modal_retry_title: "请再试一次！",
+        modal_success_title: "恭喜通关！"
+      },
+      ru: {
+        top_subtitle: "Логические головоломки со спичками",
+        action_label_move_sub: "Ходы",
+        action_label_remove_sub: "Удалено",
+        action_label_add_sub: "Добавлено",
+        target_label_sub: "Квадраты",
+        sub_undo: "Отмена (Ctrl+Z)",
+        sub_reset: "Сброс (R)",
+        sub_check: "Проверить (Enter)",
+        btn_confirm: "OK",
+        modal_retry_title: "Попробуйте снова!",
+        modal_success_title: "Поздравляем!"
+      }
+    };
+
+    // ==========================================
+    // 2. 스테이지별 데이터 (STAGES 1 ~ 10)
+    // ==========================================
+    const STAGES = {
+      1: {
+        mode: 'move',
+        maxMoves: 2,
+        targetSquares: 6,
+        gridSize: { rows: 3, cols: 3 },
+        cellSize: 105,
+        paddingX: 92,
+        paddingY: 92,
+        title_ko: "성냥개비 2개를 이동시켜 정사각형 6개로 만들어 보세요.",
+        title: {
+          en: "Move 2 matches to make 6 squares.",
+          zh: "移动2根火柴，组成6个正方形。",
+          ru: "Переместите 2 спички, чтобы получилось 6 квадратов."
+        },
+        // 첨부 이미지와 100% 동일한 좌우 2단 기둥 + 중앙 가로 연결선 (총 12개 성냥)
+        matches: [
+          'H_0_0', 'H_1_0', 'H_2_0',
+          'V_0_0', 'V_1_0',
+          'V_0_1', 'V_1_1',
+          'H_1_1',
+          'H_0_2', 'H_1_2', 'H_2_2',
+          'V_0_2', 'V_1_2',
+          'V_0_3', 'V_1_3'
+        ]
+      },
+      2: {
+        mode: 'move',
+        maxMoves: 3,
+        targetSquares: 3,
+        gridSize: { rows: 3, cols: 3 },
+        cellSize: 105,
+        paddingX: 92,
+        paddingY: 92,
+        title_ko: "성냥개비 3개를 이동시켜 정사각형 3개로 만들어 보세요.",
+        title: {
+          en: "Move 3 matches to make 3 squares.",
+          zh: "移动3根火柴，组成3个正方形。",
+          ru: "Переместите 3 спички, чтобы получилось 3 квадрата."
+        },
+        // 첨부 이미지와 100% 일치: 좌상단 2x2 격자(12개 성냥) + 우측/하단 3x3 점선 가이드
+        matches: [
+          'H_0_0', 'H_0_1',
+          'H_1_0', 'H_1_1',
+          'H_2_0', 'H_2_1',
+          'V_0_0', 'V_0_1', 'V_0_2',
+          'V_1_0', 'V_1_1', 'V_1_2'
+        ]
+      },
+      3: {
+        mode: 'move',
+        maxMoves: 4,
+        targetSquares: 4,
+        gridSize: { rows: 3, cols: 5 },
+        cellSize: 76,
+        paddingX: 60,
+        paddingY: 136,
+        title_ko: "성냥개비 4개를 이동시켜 정사각형 4개로 만들어 보세요.",
+        title: {
+          en: "Move 4 matches to make 4 squares.",
+          zh: "移动4根火柴，组成4个正方形。",
+          ru: "Переместите 4 спички, чтобы получилось 4 квадрата."
+        },
+        matches: [
+          'H_0_0', 'H_0_1', 'H_0_2', 'H_0_3', 'H_0_4',
+          'H_1_0', 'H_1_1', 'H_1_2', 'H_1_3', 'H_1_4',
+          'V_0_0', 'V_0_1', 'V_0_2', 'V_0_3', 'V_0_4', 'V_0_5'
+        ]
+      },
+      4: {
+        mode: 'remove',
+        maxMoves: 8,
+        targetSquares: 2,
+        gridSize: { rows: 3, cols: 3 },
+        cellSize: 105,
+        paddingX: 92,
+        paddingY: 92,
+        title_ko: "성냥개비 8개를 들어내어 정사각형 2개만 남기세요.",
+        title: {
+          en: "Remove 8 matches to leave only 2 squares.",
+          zh: "拿掉8根火柴，只留下2个正方形。",
+          ru: "Уберите 8 спичек, чтобы осталось только 2 квадрата."
+        },
+        matches: [
+          'H_0_0', 'H_0_1', 'H_0_2',
+          'H_1_0', 'H_1_1', 'H_1_2',
+          'H_2_0', 'H_2_1', 'H_2_2',
+          'H_3_0', 'H_3_1', 'H_3_2',
+          'V_0_0', 'V_0_1', 'V_0_2', 'V_0_3',
+          'V_1_0', 'V_1_1', 'V_1_2', 'V_1_3',
+          'V_2_0', 'V_2_1', 'V_2_2', 'V_2_3'
+        ]
+      },
+      5: {
+        mode: 'move',
+        maxMoves: 2,
+        targetSquares: 6,
+        gridSize: { rows: 3, cols: 4 },
+        cellSize: 88,
+        paddingX: 74,
+        paddingY: 118,
+        title_ko: "성냥개비 2개를 옮겨 정사각형 6개를 만들어 보세요.",
+        title: {
+          en: "Move 2 matches to make 6 squares.",
+          zh: "移动2根火柴，做成6个正方形。",
+          ru: "Переместите 2 спички, чтобы составить 6 квадратов."
+        },
+        matches: [
+          'H_0_0', 'H_0_1', 'H_0_2',
+          'V_0_0', 'V_0_1', 'V_0_2', 'V_0_3',
+          'H_1_0', 'H_1_1', 'H_1_2', 'H_1_3',
+          'V_1_2', 'V_1_3', 'V_1_4',
+          'H_2_2', 'H_2_3'
+        ]
+      },
+      6: {
+        mode: 'move',
+        maxMoves: 3,
+        targetSquares: 4,
+        equalSizeOnly: true,
+        gridSize: { rows: 3, cols: 4 },
+        cellSize: 86,
+        paddingX: 78,
+        paddingY: 120,
+        title_ko: "성냥개비 3개를 옮겨 같은 크기의 정사각형 4개를 만드세요.",
+        title: {
+          en: "Move 3 matches to make 4 equal squares.",
+          zh: "移动3根火柴，做出4个同样大小的正方形。",
+          ru: "Переместите 3 спички, чтобы получить 4 равных квадрата."
+        },
+        // 첨부 이미지 원본 + 맨 아래 오른쪽 세 번째 칸(H_2_2) 추가 반영
+        matches: [
+          'H_0_0', 'H_0_2',
+          'V_0_0', 'V_0_1', 'V_0_2', 'V_0_3',
+          'H_1_0', 'H_1_1', 'H_1_2',
+          'V_1_0', 'V_1_1', 'V_1_2', 'V_1_3',
+          'H_2_0', 'H_2_1', 'H_2_2'
+        ]
+      },
+      7: {
+        mode: 'move',
+        maxMoves: 4,
+        targetSquares: 3,
+        gridSize: { rows: 4, cols: 4 },
+        cellSize: 84,
+        paddingX: 82,
+        paddingY: 82,
+        title_ko: "성냥개비 4개를 이동하여 정사각형 3개를 만드세요.",
+        title: {
+          en: "Move 4 matches to make 3 squares.",
+          zh: "移动4根火柴，做成3个正方形。",
+          ru: "Переместите 4 спички, чтобы получилось 3 квадрата."
+        },
+        // 첨부 이미지와 100% 일치하는 16개 성냥 원본 배치
+        matches: [
+          'H_0_0', 'H_0_1', 'H_0_2', 'H_0_3',
+          'V_0_0', 'V_1_0', 'V_2_0', 'V_3_0',
+          'V_0_4', 'V_1_4', 'V_2_4', 'V_3_4',
+          'H_4_1', 'H_4_2', 'H_4_3',
+          'H_1_1', 'H_1_2',
+          'V_1_1', 'V_2_1', 'V_3_1',
+          'V_1_3', 'V_2_3',
+          'V_2_2',
+          'H_3_2'
+        ]
+      },
+      8: {
+        mode: 'puzzle_half',
+        maxMoves: 1,
+        targetSquares: 1,
+        gridSize: { rows: 2, cols: 3 },
+        cellSize: 105,
+        paddingX: 92,
+        paddingY: 145,
+        title_ko: "성냥개비 1개를 이동하여 수를 반으로 만드세요.",
+        title: {
+          en: "Move 1 match to halve the number.",
+          zh: "移动1根火柴，使数字减半。",
+          ru: "Переместите 1 спичку, чтобы уменьшить число вдвое."
+        },
+        // 숫자 10 원본 배치 (좌측 '1': V_0_0, V_1_0 / 우측 '0': H_0_1, V_0_1, V_1_1, V_0_2, V_1_2, H_2_1)
+        matches: [
+          'V_0_0', 'V_1_0',
+          'H_0_1',
+          'V_0_1', 'V_1_1',
+          'V_0_2', 'V_1_2',
+          'H_2_1'
+        ]
+      },
+      9: {
+        mode: 'stage9_grid4',
+        maxMoves: 3,
+        targetSquares: 2,
+        cellSize: 72,
+        paddingX: 106,
+        paddingY: 106,
+        title_ko: "성냥개비 3개를 더해 똑같은 크기 2개로 나누세요.",
+        title: {
+          en: "Add 3 matches to divide into 2 equal parts.",
+          zh: "增加3根火柴，分成同样大小的2部分。",
+          ru: "Добавьте 3 спички, чтобы разделить на 2 равные части."
+        },
+        // 2x2 정사각형 외곽선 8개 원본
+        matches: [
+          'S9_H_0_0', 'S9_H_0_2',
+          'S9_H_4_0', 'S9_H_4_2',
+          'S9_V_0_0', 'S9_V_2_0',
+          'S9_V_0_4', 'S9_V_2_4'
+        ]
+      },
+      10: {
+        mode: 'puzzle_digits',
+        maxMoves: 2,
+        targetSquares: 1,
+        title_ko: "성냥개비 2개를 이동하여 가장 큰 수를 만드세요.",
+        title: {
+          en: "Move 2 matches to make the largest number.",
+          zh: "移动2根火柴，做出最大的数。",
+          ru: "Переместите 2 спички, чтобы составить наибольшее число."
+        },
+        // 디지털 3 5 7 6 원본 19개 성냥
+        matches: [
+          'D_1_a', 'D_1_b', 'D_1_g', 'D_1_c', 'D_1_d',
+          'D_2_a', 'D_2_f', 'D_2_g', 'D_2_c', 'D_2_d',
+          'D_3_a', 'D_3_b', 'D_3_c',
+          'D_4_a', 'D_4_f', 'D_4_g', 'D_4_e', 'D_4_d', 'D_4_c'
+        ]
+      }
+    };
+
+    // ==========================================
+    // 3. 사운드 효과 (Web Audio API)
+    // ==========================================
+    function playTone(freq, type = 'sine', duration = 0.1) {
+      if (!isSoundOn) return;
+      try {
+        if (!audioCtx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          audioCtx = new AudioContext();
+        }
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.18, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    // ==========================================
+    // 4. 슬롯 및 지오메트리 계산
+    // ==========================================
+    function rebuildSlotDefinitions() {
+      ALL_SLOTS = [];
+      const cfg = STAGES[currentStage];
+
+      if (cfg.mode === 'stage9_grid4') {
+        const cs = cfg.cellSize;
+        for (let r = 0; r <= 4; r++) {
+          for (let c = 0; c <= 2; c++) {
+            ALL_SLOTS.push({
+              key: `S9_H_${r}_${c}`,
+              type: 'S9_H',
+              r, c,
+              headAtEnd: (c >= 2)
+            });
+          }
+        }
+        for (let r = 0; r <= 2; r++) {
+          for (let c = 0; c <= 4; c++) {
+            ALL_SLOTS.push({
+              key: `S9_V_${r}_${c}`,
+              type: 'S9_V',
+              r, c,
+              headAtEnd: true
+            });
+          }
+        }
+        return;
+      }
+
+      if (cfg.mode === 'puzzle_digits') {
+        const segments = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
+        for (let d = 0; d <= 5; d++) {
+          segments.forEach(seg => {
+            ALL_SLOTS.push({
+              key: `D_${d}_${seg}`,
+              type: 'SEG',
+              digit: d,
+              seg: seg
+            });
+          });
+        }
+        return;
+      }
+
+      const { rows, cols } = cfg.gridSize;
+      for (let r = 0; r <= rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          let headAtEnd = (c % 2 === 1);
+          if (currentStage === 6) {
+            headAtEnd = false;
+          } else if (currentStage === 7) {
+            // 스테이지 7 첨부 이미지 화약 머리 위치 일치
+            if (r === 0) headAtEnd = (c === 0 ? false : (c === 1 || c === 3));
+            else if (r === 1) headAtEnd = (c === 1);
+            else if (r === 3) headAtEnd = false;
+            else if (r === 4) headAtEnd = (c === 1 || c === 3);
+          }
+          ALL_SLOTS.push({
+            key: `H_${r}_${c}`,
+            type: 'H',
+            r, c,
+            headAtEnd
+          });
+        }
+      }
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c <= cols; c++) {
+          let headAtEnd = (r % 2 === 1);
+          if (currentStage === 6) {
+            headAtEnd = true;
+          } else if (currentStage === 7) {
+            // 스테이지 7 첨부 이미지 화약 머리 위치 일치
+            if (c === 0) headAtEnd = (r === 0 || r === 2);
+            else if (c === 1) headAtEnd = (r === 0 || r === 1);
+            else if (c === 2) headAtEnd = false;
+            else if (c === 3) headAtEnd = (r === 0 || r === 1);
+            else if (c === 4) headAtEnd = (r === 1 || r === 2);
+          }
+          ALL_SLOTS.push({
+            key: `V_${r}_${c}`,
+            type: 'V',
+            r, c,
+            headAtEnd
+          });
+        }
+      }
+    }
+
+    function getSlotGeometry(type, r, c, digit, seg) {
+      const cfg = STAGES[currentStage];
+
+      if (type === 'S9_H') {
+        const cs = cfg.cellSize;
+        const px = cfg.paddingX;
+        const py = cfg.paddingY;
+        return {
+          cx: px + (c + 1) * cs,
+          cy: py + r * cs,
+          length: cs * 2,
+          angle: 0,
+          headAtEnd: (c >= 2)
+        };
+      }
+      if (type === 'S9_V') {
+        const cs = cfg.cellSize;
+        const px = cfg.paddingX;
+        const py = cfg.paddingY;
+        return {
+          cx: px + c * cs,
+          cy: py + (r + 1) * cs,
+          length: cs * 2,
+          angle: 90,
+          headAtEnd: true
+        };
+      }
+
+      if (type === 'SEG') {
+        // 자릿수 간격을 기존 12에서 24로 대폭 확장하여 선택 편의성 향상
+        const startX = 26;
+        const dw = 58;
+        const gap = 26; // 숫자 사이 간격을 넉넉하게 확장
+        const x0 = startX + digit * (dw + gap);
+        const y0 = 160;
+        const h = 76;
+
+        switch (seg) {
+          case 'a': return { cx: x0 + dw / 2, cy: y0, length: dw - 8, angle: 0, headAtEnd: false };
+          case 'b': return { cx: x0 + dw, cy: y0 + h / 2, length: h - 8, angle: 90, headAtEnd: false };
+          case 'c': return { cx: x0 + dw, cy: y0 + h + h / 2, length: h - 8, angle: 90, headAtEnd: false };
+          case 'd': return { cx: x0 + dw / 2, cy: y0 + 2 * h, length: dw - 8, angle: 0, headAtEnd: false };
+          case 'e': return { cx: x0, cy: y0 + h + h / 2, length: h - 8, angle: 90, headAtEnd: true };
+          case 'f': return { cx: x0, cy: y0 + h / 2, length: h - 8, angle: 90, headAtEnd: true };
+          case 'g': return { cx: x0 + dw / 2, cy: y0 + h, length: dw - 8, angle: 0, headAtEnd: false };
+        }
+      }
+
+      const cs = cfg.cellSize;
+      const px = cfg.paddingX;
+      const py = cfg.paddingY;
+
+      if (type === 'H') {
+        let headAtEnd = (c % 2 === 1);
+        if (currentStage === 6) headAtEnd = false;
+        else if (currentStage === 7) {
+          if (r === 0) headAtEnd = (c === 0 ? false : (c === 1 || c === 3));
+          else if (r === 1) headAtEnd = (c === 1);
+          else if (r === 3) headAtEnd = false;
+          else if (r === 4) headAtEnd = (c === 1 || c === 3);
+        }
+        return {
+          cx: px + c * cs + cs / 2,
+          cy: py + r * cs,
+          length: cs - 8,
+          angle: 0,
+          headAtEnd
+        };
+      } else {
+        let headAtEnd = (r % 2 === 1);
+        if (currentStage === 6) headAtEnd = true;
+        else if (currentStage === 7) {
+          if (c === 0) headAtEnd = (r === 0 || r === 2);
+          else if (c === 1) headAtEnd = (r === 0 || r === 1);
+          else if (c === 2) headAtEnd = false;
+          else if (c === 3) headAtEnd = (r === 0 || r === 1);
+          else if (c === 4) headAtEnd = (r === 1 || r === 2);
+        }
+        return {
+          cx: px + c * cs,
+          cy: py + r * cs + cs / 2,
+          length: cs - 8,
+          angle: 90,
+          headAtEnd
+        };
+      }
+    }
+
+    function setStickSuccess(isSuccess) {
+      const container = document.getElementById('longStickContainer');
+      const fill = document.getElementById('longStickFill');
+      const spark = document.getElementById('stickHeadSpark');
+      const statusText = document.getElementById('stickStatusText');
+      const percentText = document.getElementById('stickPercentText');
+      const flameIcon = document.getElementById('stickFlameIcon');
+
+      if (isSuccess) {
+        clearedStages.add(currentStage);
+        container.className = "w-full h-5 sm:h-6 md:h-7 rounded-full border-2 border-amber-400 bg-stone-900 p-0.5 sm:p-1 flex items-center relative overflow-hidden transition-all duration-700 stick-glow shadow-[0_0_20px_#f59e0b]";
+        fill.className = "h-full w-full rounded-full transition-all duration-700 ease-out flex items-center justify-end pr-1 relative bg-gradient-to-r from-red-600 via-amber-500 to-yellow-300 shadow-[0_0_15px_#f59e0b]";
+        fill.style.width = '100%';
+        spark.className = "w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-yellow-100 shadow-[0_0_12px_#ffffff] opacity-100 transition-opacity duration-300 animate-ping";
+        statusText.textContent = "클리어 완료 (Clear Success!)";
+        statusText.className = "text-amber-400 font-extrabold";
+        percentText.textContent = "100% LIT 🔥";
+        percentText.className = "text-amber-300 font-black";
+        flameIcon.className = "transition-transform duration-300 scale-125 opacity-100";
+      } else {
+        container.className = "w-full h-5 sm:h-6 md:h-7 rounded-full border-2 border-dashed border-stone-700 bg-stone-900/60 p-0.5 sm:p-1 flex items-center relative overflow-hidden transition-all duration-500 shadow-inner";
+        fill.className = "h-full w-0 rounded-full transition-all duration-500 ease-out flex items-center justify-end pr-1 relative";
+        fill.style.width = '0%';
+        spark.className = "w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-amber-100 shadow-[0_0_10px_#f59e0b] opacity-0 transition-opacity duration-300";
+        statusText.textContent = "도전 중 (In Progress)";
+        statusText.className = "text-stone-400 font-medium";
+        percentText.textContent = "READY";
+        percentText.className = "text-amber-500/70 font-bold";
+        flameIcon.className = "transition-transform duration-300 scale-90 opacity-60";
+      }
+      updateStageButtonsUI();
+    }
+
+    // ==========================================
+    // 5. SVG 성냥개비 렌더링 엘리먼트 생성 (모바일/태블릿 터치 타깃 확대)
+    // ==========================================
+    function createMatchstickElement(geom, key, isSelected = false) {
+      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      g.setAttribute('class', `wood-match cursor-pointer ${isSelected ? 'match-selected' : ''}`);
+      g.setAttribute('data-match', key);
+      g.setAttribute('transform', `translate(${geom.cx}, ${geom.cy}) rotate(${geom.angle})`);
+
+      // 터치 & 클릭 히트박스: 모바일/태블릿 터치 편의성을 위해 충분한 52px 높이로 확대
+      const hit = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      hit.setAttribute('x', -geom.length / 2 - 8);
+      hit.setAttribute('y', -26);
+      hit.setAttribute('width', geom.length + 16);
+      hit.setAttribute('height', 52);
+      hit.setAttribute('fill', 'transparent');
+      g.appendChild(hit);
+
+      // 성냥 몸통 (나무)
+      const stick = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      stick.setAttribute('x', -geom.length / 2);
+      stick.setAttribute('y', -4);
+      stick.setAttribute('width', geom.length);
+      stick.setAttribute('height', 8);
+      stick.setAttribute('rx', '2.5');
+      stick.setAttribute('fill', 'url(#matchBodyGrad)');
+      g.appendChild(stick);
+
+      // 성냥 화약 머리
+      const head = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse');
+      const headX = geom.headAtEnd ? (geom.length / 2 - 2) : (-geom.length / 2 + 2);
+      head.setAttribute('cx', headX);
+      head.setAttribute('cy', 0);
+      head.setAttribute('rx', 7);
+      head.setAttribute('ry', 6);
+      head.setAttribute('fill', 'url(#matchHeadGrad)');
+      g.appendChild(head);
+
+      return g;
+    }
+
+    // ==========================================
+    // 6. 정사각형 탐색 알고리즘 (1x1 ~ 4x4)
+    // ==========================================
+    function detectSquares(matchSet) {
+      const squares = [];
+      const cfg = STAGES[currentStage];
+      if (!cfg.gridSize || cfg.mode === 'puzzle_half' || cfg.mode === 'puzzle_digits' || cfg.mode === 'stage9_grid4') {
+        return squares;
+      }
+      const { rows, cols } = cfg.gridSize;
+
+      for (let size = 1; size <= Math.min(rows, cols); size++) {
+        if (cfg.equalSizeOnly && size !== 1) continue;
+
+        for (let r = 0; r <= rows - size; r++) {
+          for (let c = 0; c <= cols - size; c++) {
+            let complete = true;
+            // 상단, 하단
+            for (let k = 0; k < size; k++) {
+              if (!matchSet.has(`H_${r}_${c + k}`) || !matchSet.has(`H_${r + size}_${c + k}`)) {
+                complete = false;
+                break;
+              }
+            }
+            if (!complete) continue;
+
+            // 좌측, 우측
+            for (let k = 0; k < size; k++) {
+              if (!matchSet.has(`V_${r + k}_${c}`) || !matchSet.has(`V_${r + k}_${c + size}`)) {
+                complete = false;
+                break;
+              }
+            }
+            if (complete) squares.push({ r, c, size });
+          }
+        }
+      }
+      return squares;
+    }
+
+    // ==========================================
+    // 7. 보드 렌더링
+    // ==========================================
+    function renderBoard() {
+      const cfg = STAGES[currentStage];
+      const slotsLayer = document.getElementById('slotsLayer');
+      const matchesLayer = document.getElementById('matchesLayer');
+      const squaresLayer = document.getElementById('squaresLayer');
+      const gridDots = document.getElementById('gridDots');
+      const moveCountEl = document.getElementById('moveCount');
+      const squareCountEl = document.getElementById('squareCount');
+
+      slotsLayer.innerHTML = '';
+      matchesLayer.innerHTML = '';
+      squaresLayer.innerHTML = '';
+      gridDots.innerHTML = '';
+
+      // Stage 9 세분화 4x4 점선 가이드
+      if (cfg.mode === 'stage9_grid4') {
+        const cs = cfg.cellSize;
+        const px = cfg.paddingX;
+        const py = cfg.paddingY;
+        for (let i = 0; i <= 4; i++) {
+          const l1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          l1.setAttribute('x1', px); l1.setAttribute('y1', py + i * cs);
+          l1.setAttribute('x2', px + 4 * cs); l1.setAttribute('y2', py + i * cs);
+          l1.setAttribute('stroke', '#44403c'); l1.setAttribute('stroke-dasharray', '3,3');
+          gridDots.appendChild(l1);
+
+          const l2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          l2.setAttribute('x1', px + i * cs); l2.setAttribute('y1', py);
+          l2.setAttribute('x2', px + i * cs); l2.setAttribute('y2', py + 4 * cs);
+          l2.setAttribute('stroke', '#44403c'); l2.setAttribute('stroke-dasharray', '3,3');
+          gridDots.appendChild(l2);
+        }
+      }
+
+      const isAddMode = (cfg.mode === 'stage9_grid4');
+      // 1. 슬롯 (빈 점선) - 터치 히트박스 확장
+      ALL_SLOTS.forEach(slot => {
+        if (!currentMatches.has(slot.key)) {
+          let geom = null;
+          if (slot.key === 'S9_H_0_0') geom = { cx: cfg.paddingX + cfg.cellSize, cy: cfg.paddingY, length: cfg.cellSize * 2, angle: 0 };
+          else if (slot.key === 'S9_H_0_2') geom = { cx: cfg.paddingX + 3 * cfg.cellSize, cy: cfg.paddingY, length: cfg.cellSize * 2, angle: 0 };
+          else if (slot.key === 'S9_H_4_0') geom = { cx: cfg.paddingX + cfg.cellSize, cy: cfg.paddingY + 4 * cfg.cellSize, length: cfg.cellSize * 2, angle: 0 };
+          else if (slot.key === 'S9_H_4_2') geom = { cx: cfg.paddingX + 3 * cfg.cellSize, cy: cfg.paddingY + 4 * cfg.cellSize, length: cfg.cellSize * 2, angle: 0 };
+          else if (slot.key === 'S9_V_0_0') geom = { cx: cfg.paddingX, cy: cfg.paddingY + cfg.cellSize, length: cfg.cellSize * 2, angle: 90 };
+          else if (slot.key === 'S9_V_2_0') geom = { cx: cfg.paddingX, cy: cfg.paddingY + 3 * cfg.cellSize, length: cfg.cellSize * 2, angle: 90 };
+          else if (slot.key === 'S9_V_0_4') geom = { cx: cfg.paddingX + 4 * cfg.cellSize, cy: cfg.paddingY + cfg.cellSize, length: cfg.cellSize * 2, angle: 90 };
+          else if (slot.key === 'S9_V_2_4') geom = { cx: cfg.paddingX + 4 * cfg.cellSize, cy: cfg.paddingY + 3 * cfg.cellSize, length: cfg.cellSize * 2, angle: 90 };
+          else geom = getSlotGeometry(slot.type, slot.r, slot.c, slot.digit, slot.seg);
+
+          const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+          g.setAttribute('class', 'slot-group cursor-pointer');
+          g.setAttribute('data-slot', slot.key);
+          g.setAttribute('transform', `translate(${geom.cx}, ${geom.cy}) rotate(${geom.angle})`);
+
+          // 모바일/태블릿 터치 편의를 위해 48px 이상의 넉넉한 터치 패드 적용
+          const hit = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+          hit.setAttribute('x', -geom.length / 2 - 8);
+          hit.setAttribute('y', -24);
+          hit.setAttribute('width', geom.length + 16);
+          hit.setAttribute('height', 48);
+          hit.setAttribute('fill', 'transparent');
+          g.appendChild(hit);
+
+          const guide = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+          guide.setAttribute('class', 'slot-guide');
+          guide.setAttribute('x', -geom.length / 2);
+          guide.setAttribute('y', -3);
+          guide.setAttribute('width', geom.length);
+          guide.setAttribute('height', 6);
+          guide.setAttribute('rx', '3');
+          guide.setAttribute('fill', 'none');
+          guide.setAttribute('stroke', (selectedMatchKey || isAddMode) ? '#fbbf24' : '#57534e');
+          guide.setAttribute('stroke-width', (selectedMatchKey || isAddMode) ? '1.8' : '1');
+          guide.setAttribute('stroke-dasharray', (selectedMatchKey || isAddMode) ? '4,4' : '3,5');
+          guide.setAttribute('opacity', (selectedMatchKey || isAddMode) ? '0.9' : '0.35');
+          g.appendChild(guide);
+
+          slotsLayer.appendChild(g);
+        }
+      });
+
+      // 2. 성냥개비
+      ALL_SLOTS.forEach(slot => {
+        if (currentMatches.has(slot.key)) {
+          let geom = null;
+          if (slot.key === 'S9_H_0_0') geom = { cx: cfg.paddingX + cfg.cellSize, cy: cfg.paddingY, length: cfg.cellSize * 2, angle: 0, headAtEnd: false };
+          else if (slot.key === 'S9_H_0_2') geom = { cx: cfg.paddingX + 3 * cfg.cellSize, cy: cfg.paddingY, length: cfg.cellSize * 2, angle: 0, headAtEnd: false };
+          else if (slot.key === 'S9_H_4_0') geom = { cx: cfg.paddingX + cfg.cellSize, cy: cfg.paddingY + 4 * cfg.cellSize, length: cfg.cellSize * 2, angle: 0, headAtEnd: false };
+          else if (slot.key === 'S9_H_4_2') geom = { cx: cfg.paddingX + 3 * cfg.cellSize, cy: cfg.paddingY + 4 * cfg.cellSize, length: cfg.cellSize * 2, angle: 0, headAtEnd: false };
+          else if (slot.key === 'S9_V_0_0') geom = { cx: cfg.paddingX, cy: cfg.paddingY + cfg.cellSize, length: cfg.cellSize * 2, angle: 90, headAtEnd: true };
+          else if (slot.key === 'S9_V_2_0') geom = { cx: cfg.paddingX, cy: cfg.paddingY + 3 * cfg.cellSize, length: cfg.cellSize * 2, angle: 90, headAtEnd: true };
+          else if (slot.key === 'S9_V_0_4') geom = { cx: cfg.paddingX + 4 * cfg.cellSize, cy: cfg.paddingY + cfg.cellSize, length: cfg.cellSize * 2, angle: 90, headAtEnd: true };
+          else if (slot.key === 'S9_V_2_4') geom = { cx: cfg.paddingX + 4 * cfg.cellSize, cy: cfg.paddingY + 3 * cfg.cellSize, length: cfg.cellSize * 2, angle: 90, headAtEnd: true };
+          else geom = getSlotGeometry(slot.type, slot.r, slot.c, slot.digit, slot.seg);
+
+          const isSelected = (slot.key === selectedMatchKey);
+          const matchEl = createMatchstickElement(geom, slot.key, isSelected);
+          matchesLayer.appendChild(matchEl);
+        }
+      });
+
+      // 3. 사각형 은은한 하이라이트
+      const detected = detectSquares(currentMatches);
+      detected.forEach(sq => {
+        const cs = cfg.cellSize;
+        const px = cfg.paddingX;
+        const py = cfg.paddingY;
+        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.setAttribute('x', px + sq.c * cs + 6);
+        rect.setAttribute('y', py + sq.r * cs + 6);
+        rect.setAttribute('width', sq.size * cs - 12);
+        rect.setAttribute('height', sq.size * cs - 12);
+        rect.setAttribute('rx', '8');
+        rect.setAttribute('fill', '#10b981');
+        rect.setAttribute('opacity', '0.08');
+        squaresLayer.appendChild(rect);
+      });
+
+      // 4. 상태 텍스트 갱신
+      moveCountEl.textContent = moveHistory.length;
+      if (cfg.mode === 'puzzle_digits' || cfg.mode === 'puzzle_half') {
+        squareCountEl.textContent = "도전";
+      } else if (cfg.mode === 'stage9_grid4') {
+        const isTwoEqual = currentMatches.has('S9_H_1_0') && currentMatches.has('S9_V_1_2') && currentMatches.has('S9_H_3_2');
+        squareCountEl.textContent = isTwoEqual ? "2" : "1";
+      } else {
+        squareCountEl.textContent = detected.length;
+      }
+    }
+
+    // ==========================================
+    // 9. 터치 & 클릭 조작 핸들러 + PC 키보드 단축키
+    // ==========================================
+    function setupInteractions() {
+      const svg = document.getElementById('puzzleSvg');
+
+      // 마우스 클릭 및 모바일/태블릿 터치 공통 핸들러
+      const handleSelectOrPlace = (e) => {
+        const cfg = STAGES[currentStage];
+        const matchEl = e.target.closest('.wood-match');
+        const slotEl = e.target.closest('.slot-group');
+
+        // 들어내기 모드 (Stage 4)
+        if (cfg.mode === 'remove') {
+          if (matchEl) {
+            const key = matchEl.getAttribute('data-match');
+            if (moveHistory.length < cfg.maxMoves) {
+              currentMatches.delete(key);
+              moveHistory.push({ type: 'remove', key });
+              playTone(330, 'sine', 0.08);
+              renderBoard();
+            }
+          }
+          return;
+        }
+
+        // 추가 모드 (Stage 9)
+        if (cfg.mode === 'stage9_grid4') {
+          if (slotEl) {
+            const slotKey = slotEl.getAttribute('data-slot');
+            if (moveHistory.length < cfg.maxMoves) {
+              currentMatches.add(slotKey);
+              moveHistory.push({ type: 'add', key: slotKey });
+              playTone(480, 'triangle', 0.1);
+              renderBoard();
+            }
+          }
+          return;
+        }
+
+        // 일반 이동 모드
+        if (matchEl) {
+          const key = matchEl.getAttribute('data-match');
+          if (selectedMatchKey === key) {
+            selectedMatchKey = null; // 선택 해제
+            playTone(360, 'sine', 0.08);
+          } else {
+            selectedMatchKey = key; // 성냥 선택
+            playTone(520, 'sine', 0.1);
+          }
+          renderBoard();
+          return;
+        }
+
+        if (slotEl && selectedMatchKey) {
+          const targetSlotKey = slotEl.getAttribute('data-slot');
+          if (moveHistory.length >= cfg.maxMoves) {
+            playTone(220, 'sawtooth', 0.15);
+            return;
+          }
+
+          const fromKey = selectedMatchKey;
+          currentMatches.delete(fromKey);
+          currentMatches.add(targetSlotKey);
+          moveHistory.push({ from: fromKey, to: targetSlotKey });
+
+          selectedMatchKey = null;
+          playTone(600, 'sine', 0.12);
+          renderBoard();
+        }
+      };
+
+      svg.addEventListener('click', handleSelectOrPlace);
+
+      // 실행 취소 함수
+      const doUndo = () => {
+        if (moveHistory.length === 0) return;
+        const cfg = STAGES[currentStage];
+        const lastAction = moveHistory.pop();
+
+        if (cfg.mode === 'remove') {
+          currentMatches.add(lastAction.key);
+        } else if (cfg.mode === 'stage9_grid4') {
+          currentMatches.delete(lastAction.key);
+        } else {
+          currentMatches.delete(lastAction.to);
+          currentMatches.add(lastAction.from);
+        }
+        selectedMatchKey = null;
+        playTone(380, 'sine', 0.08);
+        setStickSuccess(false);
+        renderBoard();
+      };
+
+      // 다시하기 함수
+      const doReset = () => {
+        currentMatches = new Set(initialMatches);
+        moveHistory = [];
+        selectedMatchKey = null;
+        playTone(320, 'sine', 0.1);
+        setStickSuccess(false);
+        renderBoard();
+      };
+
+      // 버튼 이벤트 바인딩
+      document.getElementById('undoBtn').onclick = doUndo;
+      document.getElementById('resetBtn').onclick = doReset;
+      document.getElementById('checkBtn').onclick = () => checkWinCondition();
+
+      // 사운드 토글
+      document.getElementById('soundToggle').onclick = () => {
+        isSoundOn = !isSoundOn;
+        document.getElementById('soundToggle').textContent = isSoundOn ? '🔊' : '🔇';
+      };
+
+      // PC 데스크톱 사용자를 위한 키보드 단축키 지원
+      window.addEventListener('keydown', (e) => {
+        // 모달 열림 상태일 때 Enter / Escape로 닫기
+        const modal = document.getElementById('resultModal');
+        if (!modal.classList.contains('hidden')) {
+          if (e.key === 'Enter' || e.key === 'Escape' || e.key === ' ') {
+            e.preventDefault();
+            modal.classList.add('hidden');
+            playTone(400, 'sine', 0.08);
+          }
+          return;
+        }
+
+        // Ctrl+Z 또는 Command+Z: 실행 취소
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+          e.preventDefault();
+          doUndo();
+          return;
+        }
+
+        // R키: 다시하기
+        if (e.key.toLowerCase() === 'r') {
+          e.preventDefault();
+          doReset();
+          return;
+        }
+
+        // Enter 또는 Space: 정답 확인
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          checkWinCondition();
+          return;
+        }
+
+        // 숫자 1 ~ 9 및 0 (Stage 10): 스테이지 단축키
+        if (e.key >= '1' && e.key <= '9') {
+          setStage(parseInt(e.key, 10));
+        } else if (e.key === '0') {
+          setStage(10);
+        }
+      });
+    }
+
+    // ==========================================
+    // 8. 정답 판별 및 알림 팝업
+    // ==========================================
+    function checkWinCondition() {
+      const cfg = STAGES[currentStage];
+      const moves = moveHistory.length;
+      const dict = TRANSLATIONS[currentLang];
+
+      // Stage 10 (가장 큰 수: 35151만 정답으로 인정)
+      if (cfg.mode === 'puzzle_digits') {
+        const is3 = currentMatches.has('D_1_a') && currentMatches.has('D_1_b') && currentMatches.has('D_1_g') && currentMatches.has('D_1_c') && currentMatches.has('D_1_d') && !currentMatches.has('D_1_e') && !currentMatches.has('D_1_f');
+        const is5_first = currentMatches.has('D_2_a') && currentMatches.has('D_2_f') && currentMatches.has('D_2_g') && currentMatches.has('D_2_c') && currentMatches.has('D_2_d') && !currentMatches.has('D_2_b') && !currentMatches.has('D_2_e');
+        const is1_mid = currentMatches.has('D_3_b') && currentMatches.has('D_3_c') && !currentMatches.has('D_3_a') && !currentMatches.has('D_3_d') && !currentMatches.has('D_3_e') && !currentMatches.has('D_3_f') && !currentMatches.has('D_3_g');
+        const is5_second = currentMatches.has('D_4_a') && currentMatches.has('D_4_f') && currentMatches.has('D_4_g') && currentMatches.has('D_4_c') && currentMatches.has('D_4_d') && !currentMatches.has('D_4_b') && !currentMatches.has('D_4_e');
+        const is1_last = currentMatches.has('D_5_b') && currentMatches.has('D_5_c') && !currentMatches.has('D_5_a') && !currentMatches.has('D_5_d') && !currentMatches.has('D_5_e') && !currentMatches.has('D_5_f') && !currentMatches.has('D_5_g');
+        const is0_empty = !currentMatches.has('D_0_a') && !currentMatches.has('D_0_b') && !currentMatches.has('D_0_c') && !currentMatches.has('D_0_d') && !currentMatches.has('D_0_e') && !currentMatches.has('D_0_f') && !currentMatches.has('D_0_g');
+
+        const isExact35151 = is3 && is5_first && is1_mid && is5_second && is1_last && is0_empty;
+
+        if (moves === 2 && isExact35151) {
+          setStickSuccess(true);
+          triggerSuccessCelebration();
+          return;
+        }
+
+        setStickSuccess(false);
+        playTone(260, 'sawtooth', 0.2);
+        showModal('다시 도전하세요!', dict.modal_retry_title, '', '🤔');
+        return;
+      }
+
+      // Stage 9 (3개 더하기)
+      if (cfg.mode === 'stage9_grid4') {
+        const isSolved = currentMatches.has('S9_H_1_0') && currentMatches.has('S9_V_1_2') && currentMatches.has('S9_H_3_2');
+        if (moves === 3 && isSolved) {
+          setStickSuccess(true);
+          triggerSuccessCelebration();
+          return;
+        }
+        setStickSuccess(false);
+        playTone(260, 'sawtooth', 0.2);
+        showModal('다시 도전하세요!', dict.modal_retry_title, '', '🤔');
+        return;
+      }
+
+      // Stage 8 (1개 이동하여 수를 반으로)
+      if (cfg.mode === 'puzzle_half') {
+        const isRotatedFive = currentMatches.has('H_2_0') && !currentMatches.has('H_2_1') &&
+                              currentMatches.has('H_0_1') && currentMatches.has('V_0_0') &&
+                              currentMatches.has('V_1_0') && currentMatches.has('V_0_1') &&
+                              currentMatches.has('V_1_1') && currentMatches.has('V_0_2') &&
+                              currentMatches.has('V_1_2');
+        if (moves === 1 && isRotatedFive) {
+          setStickSuccess(true);
+          triggerSuccessCelebration();
+          return;
+        }
+        setStickSuccess(false);
+        playTone(260, 'sawtooth', 0.2);
+        showModal('다시 도전하세요!', dict.modal_retry_title, '', '🤔');
+        return;
+      }
+
+      // 일반 사각형 문제 (Stages 1 ~ 7)
+      const squares = detectSquares(currentMatches);
+      const isSuccessMoves = (moves === cfg.maxMoves);
+      const isSuccessSquares = (squares.length === cfg.targetSquares);
+
+      if (isSuccessMoves && isSuccessSquares) {
+        setStickSuccess(true);
+        triggerSuccessCelebration();
+        return;
+      }
+
+      setStickSuccess(false);
+      playTone(260, 'sawtooth', 0.2);
+      showModal('다시 도전하세요!', dict.modal_retry_title, '', '🤔');
+    }
+
+    function triggerSuccessCelebration() {
+      playTone(523.25, 'triangle', 0.12);
+      setTimeout(() => playTone(659.25, 'triangle', 0.15), 120);
+      setTimeout(() => playTone(783.99, 'triangle', 0.35), 260);
+
+      try {
+        confetti({
+          particleCount: 80,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+      } catch (e) {}
+
+      const dict = TRANSLATIONS[currentLang];
+      showModal('축하합니다!', dict.modal_success_title, '', '🎉');
+    }
+
+    function showModal(titleKo, titleSub, descKo = '', emoji = '🎉') {
+      const modal = document.getElementById('resultModal');
+      const titleKoEl = document.getElementById('modalTitleKo');
+      const titleSubEl = document.getElementById('modalTitleSub');
+      const descKoEl = document.getElementById('modalDescKo');
+      const emojiEl = document.getElementById('modalEmoji');
+
+      titleKoEl.textContent = titleKo;
+      titleSubEl.textContent = titleSub;
+      if (descKo) {
+        descKoEl.innerHTML = descKo;
+        descKoEl.classList.remove('hidden');
+      } else {
+        descKoEl.innerHTML = '';
+        descKoEl.classList.add('hidden');
+      }
+      emojiEl.textContent = emoji;
+
+      modal.classList.remove('hidden');
+    }
+
+    document.getElementById('modalCloseBtn').onclick = () => {
+      document.getElementById('resultModal').classList.add('hidden');
+      playTone(400, 'sine', 0.08);
+    };
+
+    // ==========================================
+    // 10. 스테이지 전환 & 다국어 UI 갱신
+    // ==========================================
+    function setStage(stageNum) {
+      currentStage = stageNum;
+      const cfg = STAGES[stageNum];
+      initialMatches = [...cfg.matches];
+      currentMatches = new Set(initialMatches);
+      moveHistory = [];
+      selectedMatchKey = null;
+      setStickSuccess(false);
+
+      // 스테이지 10일 때는 숫자가 넓어진 간격에 맞게 SVG 가로 viewBox를 550으로 확장
+      const svg = document.getElementById('puzzleSvg');
+      if (stageNum === 10) {
+        svg.setAttribute('viewBox', '0 0 550 500');
+      } else {
+        svg.setAttribute('viewBox', '0 0 500 500');
+      }
+
+      updateStageButtonsUI();
+      rebuildSlotDefinitions();
+      updateLanguageUI();
+      renderBoard();
+    }
+
+    function updateStageButtonsUI() {
+      for (let i = 1; i <= 10; i++) {
+        const item = document.getElementById(`stageItem-${i}`);
+        const btn = document.getElementById(`stageBtn-${i}`);
+        const stick = document.getElementById(`stageStick-${i}`);
+        if (!item || !btn || !stick) continue;
+
+        // 버튼 활성화 스타일 (모바일/태블릿 터치 및 PC 마우스 호버 지원)
+        if (i === currentStage) {
+          btn.className = "w-full py-1 sm:py-1.5 md:py-2 text-[9px] sm:text-xs rounded-lg sm:rounded-xl font-bold bg-amber-500 text-stone-950 shadow-md shadow-amber-950/30 whitespace-nowrap transition text-center touch-manipulation";
+        } else {
+          btn.className = "w-full py-1 sm:py-1.5 md:py-2 text-[9px] sm:text-xs rounded-lg sm:rounded-xl font-semibold bg-stone-800/90 text-neutral-300 hover:bg-stone-700 border border-white/5 whitespace-nowrap transition text-center touch-manipulation";
+        }
+
+        // 미니 스틱 불 켜짐 여부 (성공 완료된 스테이지)
+        if (clearedStages.has(i)) {
+          stick.className = "w-full h-1 sm:h-1.5 rounded-full border border-amber-400 bg-stone-900 overflow-hidden flex items-center p-[0.5px] transition-all duration-500 stage-mini-stick-lit";
+        } else {
+          stick.className = "w-full h-1 sm:h-1.5 rounded-full border border-dashed border-stone-700 bg-stone-900/60 overflow-hidden flex items-center p-[0.5px] transition-all duration-300";
+        }
+      }
+    }
+
+    function setLanguage(lang) {
+      currentLang = lang;
+      ['en', 'zh', 'ru'].forEach(l => {
+        const btn = document.getElementById(`langBtn-${l}`);
+        if (l === lang) {
+          btn.className = "lang-btn px-2.5 py-1 text-xs font-bold rounded-xl bg-amber-500 text-stone-950 shadow-sm transition";
+        } else {
+          btn.className = "lang-btn px-2.5 py-1 text-xs font-semibold rounded-xl text-stone-400 hover:text-white transition";
+        }
+      });
+      updateLanguageUI();
+    }
+
+    function updateLanguageUI() {
+      const dict = TRANSLATIONS[currentLang];
+      const cfg = STAGES[currentStage];
+
+      document.getElementById('topSubtitle').textContent = dict.top_subtitle;
+      document.getElementById('stageBadge').textContent = `Stage ${currentStage}`;
+      document.getElementById('puzzleTitleKo').textContent = cfg.title_ko;
+      document.getElementById('puzzleTitleSub').textContent = cfg.title[currentLang];
+
+      const actionKo = (cfg.mode === 'remove') ? "제거 횟수" : (cfg.mode === 'stage9_grid4') ? "추가 횟수" : "이동 횟수";
+      const actionSub = (cfg.mode === 'remove') ? dict.action_label_remove_sub : (cfg.mode === 'stage9_grid4') ? dict.action_label_add_sub : dict.action_label_move_sub;
+      document.getElementById('actionLabelKo').textContent = actionKo;
+      document.getElementById('actionLabelSub').textContent = actionSub;
+      document.getElementById('maxMoves').textContent = `/ ${cfg.maxMoves}`;
+
+      if (cfg.mode === 'puzzle_digits' || cfg.mode === 'puzzle_half') {
+        document.getElementById('targetLabelKo').textContent = "목표 달성";
+        document.getElementById('targetLabelSub').textContent = dict.target_label_sub;
+        document.getElementById('targetSquares').textContent = "/ 1";
+      } else {
+        document.getElementById('targetLabelKo').textContent = "정사각형";
+        document.getElementById('targetLabelSub').textContent = dict.target_label_sub;
+        document.getElementById('targetSquares').textContent = `/ ${cfg.targetSquares}`;
+      }
+
+      document.getElementById('subUndo').textContent = dict.sub_undo;
+      document.getElementById('subReset').textContent = dict.sub_reset;
+      document.getElementById('subCheck').textContent = dict.sub_check;
+      document.getElementById('modalCloseBtn').textContent = dict.btn_confirm;
+    }
+
+    // ==========================================
+    // 11. 초기 구동
+    // ==========================================
+    window.onload = function() {
+      // 관산중학교 학생 정보 입력 모달 및 제출 처리
+      const studentModal = document.getElementById('studentEntryModal');
+      const studentForm = document.getElementById('studentForm');
+      const studentIdInput = document.getElementById('studentIdInput');
+      const studentNameInput = document.getElementById('studentNameInput');
+      const studentBadge = document.getElementById('studentBadge');
+      const studentDisplay = document.getElementById('studentDisplay');
+
+      // 폼 제출 이벤트
+      studentForm.onsubmit = (e) => {
+        e.preventDefault();
+        const idVal = studentIdInput.value.trim();
+        const nameVal = studentNameInput.value.trim();
+
+        if (idVal && nameVal) {
+          currentStudent = { id: idVal, name: nameVal };
+          studentDisplay.textContent = `관산중 ${idVal} ${nameVal}`;
+          studentBadge.classList.remove('hidden');
+          studentBadge.classList.add('inline-flex');
+          studentModal.classList.add('hidden');
+          playTone(520, 'sine', 0.15);
+        }
+      };
+
+      // 상단 학번/이름 뱃지 클릭 시 수정 모달 재호출 기능
+      studentBadge.onclick = () => {
+        studentIdInput.value = currentStudent.id;
+        studentNameInput.value = currentStudent.name;
+        studentModal.classList.remove('hidden');
+      };
+
+      // 시작 시 학번 입력창에 자동 포커스
+      setTimeout(() => {
+        studentIdInput.focus();
+      }, 300);
+
+      const stageBtnContainer = document.getElementById('stageBtnContainer');
+      stageBtnContainer.innerHTML = '';
+
+      for (let i = 1; i <= 10; i++) {
+        // 버튼과 미니 스틱을 세로로 묶는 flex 래퍼 (2단 그리드 셀 너비 100% 대응)
+        const wrapper = document.createElement('div');
+        wrapper.id = `stageItem-${i}`;
+        wrapper.className = "flex flex-col items-center gap-1 w-full";
+
+        // 스테이지 버튼
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.id = `stageBtn-${i}`;
+        btn.setAttribute('data-stage', i);
+        btn.textContent = `Stage ${i}`;
+        btn.onclick = () => setStage(i);
+        wrapper.appendChild(btn);
+
+        // 버튼 바로 아래에 위치하는 테두리 미니 스틱
+        const miniStick = document.createElement('div');
+        miniStick.id = `stageStick-${i}`;
+        miniStick.className = "w-full h-1.5 rounded-full border border-dashed border-stone-700 bg-stone-900/60 overflow-hidden flex items-center p-[0.5px] transition-all duration-300";
+        
+        // 스틱 내부 불빛 필러
+        const miniStickFill = document.createElement('div');
+        miniStickFill.className = "mini-stick-fill h-full w-0 rounded-full transition-all duration-500";
+        miniStick.appendChild(miniStickFill);
+
+        wrapper.appendChild(miniStick);
+        stageBtnContainer.appendChild(wrapper);
+      }
+
+      setupInteractions();
+      setLanguage('en');
+      setStage(1);
+    };
+  </script>
+</body>
+</html>
