@@ -81,7 +81,7 @@
     }
   </style>
 </head>
-<body class="bg-neutral-950 text-neutral-100 min-h-[100dvh] h-[100dvh] flex overflow-hidden">
+<body class="bg-neutral-950 text-neutral-100 min-h-[100dvh] h-[100dvh] flex flex-row overflow-hidden relative">
 
   <!-- ================= 메인 게임 영역 ================= -->
   <div class="flex-1 flex flex-col justify-between items-center px-2 py-1 sm:px-4 sm:py-2 md:px-6 md:py-2 min-w-0 h-full overflow-hidden relative">
@@ -121,8 +121,8 @@
             🔊
           </button>
 
-          <!-- 모바일용 랭킹 열기 토글 버튼 -->
-          <button id="mobileRankingToggle" type="button" class="lg:hidden w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-[11px] sm:text-xs text-amber-300 hover:bg-amber-500/30 transition shadow" title="실시간 랭킹 열기">
+          <!-- 랭킹 열기 토글 버튼 (모바일 및 패널 닫혔을 때 표시) -->
+          <button id="mobileRankingToggle" type="button" class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-[11px] sm:text-xs text-amber-300 hover:bg-amber-500/30 transition shadow" title="실시간 랭킹 열기">
             🏆
           </button>
         </div>
@@ -236,10 +236,11 @@
   </div>
 
   <!-- 모바일 배경 오버레이 (클릭 시 닫힘) -->
-  <div id="rankingOverlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden lg:hidden transition-opacity"></div>
+  <div id="rankingOverlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden md:hidden transition-opacity"></div>
 
   <!-- ================= 실시간 랭킹 순위표 슬라이드 패널 ================= -->
-  <aside id="rankingPanel" class="fixed lg:static top-0 right-0 h-full w-[280px] sm:w-[320px] lg:w-[340px] bg-stone-900/95 lg:bg-stone-900/70 border-l border-stone-800 z-50 flex flex-col transition-transform duration-300 ease-in-out translate-x-full lg:translate-x-0 shadow-2xl lg:shadow-none shrink-0">
+  <!-- 태블릿 및 PC(md 이상)에서는 relative로 공간을 차지하며 기본 표시, 모바일에서는 fixed 슬라이드 오버레이 -->
+  <aside id="rankingPanel" class="fixed md:relative top-0 right-0 h-full w-[280px] sm:w-[320px] md:w-[300px] lg:w-[340px] bg-stone-900/95 md:bg-stone-900/80 border-l border-stone-800 z-50 md:z-20 flex flex-col transition-all duration-300 ease-in-out translate-x-full md:translate-x-0 shadow-2xl md:shadow-none shrink-0">
     <div class="p-3 border-b border-stone-800 flex items-center justify-between shrink-0 bg-stone-900">
       <div class="flex items-center gap-2">
         <span class="text-xl">🏆</span>
@@ -251,10 +252,10 @@
         </div>
       </div>
       <div class="flex items-center gap-1">
-        <button id="refreshRankBtn" title="랭킹 새로고침" class="p-1 rounded-lg text-stone-400 hover:text-white hover:bg-stone-800 transition text-xs">
+        <button id="refreshRankBtn" title="랭킹 새로고침" class="p-1.5 rounded-lg text-stone-400 hover:text-white hover:bg-stone-800 transition text-xs">
           🔄
         </button>
-        <button id="closeRankBtn" class="lg:hidden p-1 rounded-lg text-stone-400 hover:text-white hover:bg-stone-800 transition text-sm">
+        <button id="closeRankBtn" class="p-1.5 rounded-lg text-stone-400 hover:text-white hover:bg-stone-800 transition text-sm font-bold" title="패널 접기">
           ✕
         </button>
       </div>
@@ -312,7 +313,7 @@
 
   <!-- 스크립트 로직 -->
   <script>
-    // 구글 Apps Script 배포 URL 반영
+    // 전달받은 실제 Google Apps Script 웹앱 URL
     const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwk5G4p61rmgp4WrYMJN6pSvwNWvfXu8RLMeA_KFGUWnTHHAjz2rBBP8LtoaaydkYDagw/exec";
 
     let currentStage = 1;
@@ -364,7 +365,7 @@
         top_subtitle: "Логические головоломки со спичками",
         action_label_move_sub: "Ходы",
         action_label_remove_sub: "Удалено",
-        action_label_add_sub: "Добавлено",
+        action_label_add_sub: "До바влено",
         target_label_sub: "Квадраты",
         sub_undo: "Отмена (Ctrl+Z)",
         sub_reset: "Сброс (R)",
@@ -409,7 +410,7 @@
       6: {
         mode: 'move', maxMoves: 3, targetSquares: 4, equalSizeOnly: true, gridSize: { rows: 3, cols: 4 }, cellSize: 86, paddingX: 78, paddingY: 120,
         title_ko: "성냥개비 3개를 옮겨 같은 크기의 정사각형 4개를 만드세요.",
-        title: { en: "Move 3 matches to make 4 equal squares.", zh: "移动3根火柴，做出4个同样大小的正方形。", ru: "Переместите 3 спички, чтобы получить 4 равных квадра타." },
+        title: { en: "Move 3 matches to make 4 equal squares.", zh: "移动3根火柴，做出4个同样大小的正方形。", ru: "Переместите 3 спички, чтобы получить 4 равных квадрата." },
         matches: ['H_0_0', 'H_0_2', 'V_0_0', 'V_0_1', 'V_0_2', 'V_0_3', 'H_1_0', 'H_1_1', 'H_1_2', 'V_1_0', 'V_1_1', 'V_1_2', 'V_1_3', 'H_2_0', 'H_2_1', 'H_2_2']
       },
       7: {
@@ -479,71 +480,97 @@
       if (el) el.textContent = formatTime(totalElapsedSeconds);
     }
 
-    // Google Apps Script 랭킹 조회
+    // JSONP 응답 처리
+    window.onRankingLoaded = function(data) {
+      renderRankingList(data);
+    };
+
+    function renderRankingList(data) {
+      const listEl = document.getElementById('rankingList');
+      if (!data || !Array.isArray(data) || data.length === 0) {
+        listEl.innerHTML = '<div class="py-8 text-center text-stone-500 text-xs">아직 모든 스테이지를 완료한<br>도전자가 없습니다.<br><span class="text-amber-400">1등에 도전해 보세요!</span></div>';
+        return;
+      }
+
+      listEl.innerHTML = '';
+      data.forEach((item, idx) => {
+        const rank = idx + 1;
+        const isMe = currentStudent.id && currentStudent.id === String(item.studentId) && currentStudent.name === String(item.name);
+        
+        let medal = `<span class="w-5 text-center font-bold text-stone-400">${rank}</span>`;
+        let rankStyle = "bg-stone-800/40 border-stone-800/60";
+
+        if (rank === 1) {
+          medal = `<span class="w-5 text-center text-base">🥇</span>`;
+          rankStyle = "bg-amber-500/15 border-amber-500/40 text-amber-200";
+        } else if (rank === 2) {
+          medal = `<span class="w-5 text-center text-base">🥈</span>`;
+          rankStyle = "bg-slate-400/15 border-slate-400/40 text-slate-200";
+        } else if (rank === 3) {
+          medal = `<span class="w-5 text-center text-base">🥉</span>`;
+          rankStyle = "bg-amber-700/15 border-amber-700/40 text-amber-300";
+        }
+
+        if (isMe) {
+          rankStyle += " ring-1 ring-amber-400 shadow-md shadow-amber-950/40";
+        }
+
+        const row = document.createElement('div');
+        row.className = `flex items-center justify-between p-2 rounded-xl border ${rankStyle} transition`;
+        row.innerHTML = `
+          <div class="flex items-center gap-2 min-w-0">
+            ${medal}
+            <div class="truncate">
+              <div class="font-bold text-[11px] truncate flex items-center gap-1">
+                <span>${item.name}</span>
+                <span class="text-[9px] text-stone-400 font-normal">(${item.studentId})</span>
+                ${isMe ? '<span class="text-[8px] bg-amber-500 text-stone-950 font-black px-1 rounded">나</span>' : ''}
+              </div>
+            </div>
+          </div>
+          <div class="font-mono text-[11px] font-bold text-amber-400 shrink-0">
+            ${formatTime(item.time)}
+          </div>
+        `;
+        listEl.appendChild(row);
+      });
+    }
+
+    // Google Apps Script 랭킹 조회 (CORS 제약 방지 Fetch & JSONP 2단계 처리)
     async function fetchRankings() {
       const listEl = document.getElementById('rankingList');
       if (!GOOGLE_SCRIPT_URL) return;
 
       listEl.innerHTML = '<div class="py-8 text-center text-stone-400 text-xs animate-pulse">랭킹을 갱신하는 중... 🔄</div>';
+      
       try {
-        const res = await fetch(GOOGLE_SCRIPT_URL);
-        const data = await res.json();
-
-        if (!data || data.length === 0) {
-          listEl.innerHTML = '<div class="py-8 text-center text-stone-500 text-xs">아직 모든 스테이지를 완료한<br>도전자가 없습니다. 1등에 도전하세요!</div>';
+        const res = await fetch(`${GOOGLE_SCRIPT_URL}?t=${Date.now()}`);
+        if (res.ok) {
+          const data = await res.json();
+          renderRankingList(data);
           return;
         }
-
-        listEl.innerHTML = '';
-        data.forEach((item, idx) => {
-          const rank = idx + 1;
-          const isMe = currentStudent.id && currentStudent.id === item.studentId && currentStudent.name === item.name;
-          
-          let medal = `<span class="w-5 text-center font-bold text-stone-400">${rank}</span>`;
-          let rankStyle = "bg-stone-800/40 border-stone-800/60";
-
-          if (rank === 1) {
-            medal = `<span class="w-5 text-center text-base">🥇</span>`;
-            rankStyle = "bg-amber-500/15 border-amber-500/40 text-amber-200";
-          } else if (rank === 2) {
-            medal = `<span class="w-5 text-center text-base">🥈</span>`;
-            rankStyle = "bg-slate-400/15 border-slate-400/40 text-slate-200";
-          } else if (rank === 3) {
-            medal = `<span class="w-5 text-center text-base">🥉</span>`;
-            rankStyle = "bg-amber-700/15 border-amber-700/40 text-amber-300";
-          }
-
-          if (isMe) {
-            rankStyle += " ring-1 ring-amber-400 shadow-md shadow-amber-950/40";
-          }
-
-          const row = document.createElement('div');
-          row.className = `flex items-center justify-between p-2 rounded-xl border ${rankStyle} transition`;
-          row.innerHTML = `
-            <div class="flex items-center gap-2 min-w-0">
-              ${medal}
-              <div class="truncate">
-                <div class="font-bold text-[11px] truncate flex items-center gap-1">
-                  <span>${item.name}</span>
-                  <span class="text-[9px] text-stone-400 font-normal">(${item.studentId})</span>
-                  ${isMe ? '<span class="text-[8px] bg-amber-500 text-stone-950 font-black px-1 rounded">나</span>' : ''}
-                </div>
-              </div>
-            </div>
-            <div class="font-mono text-[11px] font-bold text-amber-400 shrink-0">
-              ${formatTime(item.time)}
-            </div>
-          `;
-          listEl.appendChild(row);
-        });
-
       } catch (err) {
-        console.error("랭킹 조회 실패:", err);
-        listEl.innerHTML = '<div class="py-6 text-center text-red-400/80 text-xs">랭킹 데이터를 불러오지 못했습니다.<br>잠시 후 다시 시도해 주세요.</div>';
+        console.warn("fetch 실패, JSONP 방식으로 폴백합니다:", err);
+      }
+
+      try {
+        const oldScript = document.getElementById('jsonpRankingScript');
+        if (oldScript) oldScript.remove();
+
+        const script = document.createElement('script');
+        script.id = 'jsonpRankingScript';
+        script.src = `${GOOGLE_SCRIPT_URL}?callback=onRankingLoaded&t=${Date.now()}`;
+        script.onerror = () => {
+          listEl.innerHTML = '<div class="py-6 text-center text-red-400/80 text-xs">랭킹 데이터를 불러오지 못했습니다.<br>스프레드시트 배포 상태를 확인해 주세요.</div>';
+        };
+        document.body.appendChild(script);
+      } catch (e) {
+        console.error("랭킹 조회 실패:", e);
+        listEl.innerHTML = '<div class="py-6 text-center text-red-400/80 text-xs">데이터 로드 실패</div>';
       }
     }
 
-    // Google Apps Script 점수 전송
     async function submitScore(timeSec) {
       if (!GOOGLE_SCRIPT_URL) return;
       if (!currentStudent.id || !currentStudent.name) return;
@@ -559,7 +586,7 @@
             time: timeSec
           })
         });
-        setTimeout(fetchRankings, 1200);
+        setTimeout(fetchRankings, 1500);
       } catch (e) {
         console.error("점수 등록 실패:", e);
       }
@@ -910,18 +937,29 @@
       }
     }
 
-    // 패널 제어
     const rankingPanel = document.getElementById('rankingPanel');
     const rankingOverlay = document.getElementById('rankingOverlay');
 
     function openRankingPanel() {
       rankingPanel.classList.remove('translate-x-full');
+      rankingPanel.classList.remove('hidden');
       rankingOverlay.classList.remove('hidden');
     }
 
     function closeRankingPanel() {
       rankingPanel.classList.add('translate-x-full');
       rankingOverlay.classList.add('hidden');
+      if (window.innerWidth >= 768) {
+        rankingPanel.classList.add('hidden');
+      }
+    }
+
+    function toggleRankingPanel() {
+      if (rankingPanel.classList.contains('translate-x-full') || rankingPanel.classList.contains('hidden')) {
+        openRankingPanel();
+      } else {
+        closeRankingPanel();
+      }
     }
 
     function setupInteractions() {
@@ -1028,7 +1066,7 @@
         document.getElementById('soundToggle').textContent = isSoundOn ? '🔊' : '🔇';
       };
 
-      document.getElementById('mobileRankingToggle').onclick = openRankingPanel;
+      document.getElementById('mobileRankingToggle').onclick = toggleRankingPanel;
       document.getElementById('closeRankBtn').onclick = closeRankingPanel;
       rankingOverlay.onclick = closeRankingPanel;
       document.getElementById('refreshRankBtn').onclick = fetchRankings;
