@@ -83,10 +83,10 @@
 </head>
 <body class="bg-neutral-950 text-neutral-100 min-h-[100dvh] h-[100dvh] flex overflow-hidden">
 
-  <!-- ================= 전체 레이아웃 (게임 영역 + 우측 랭킹 패널) ================= -->
+  <!-- ================= 메인 게임 영역 ================= -->
   <div class="flex-1 flex flex-col justify-between items-center px-2 py-1 sm:px-4 sm:py-2 md:px-6 md:py-2 min-w-0 h-full overflow-hidden relative">
 
-    <!-- ================= TOP UTILITY BAR ================= -->
+    <!-- 상단 바 -->
     <header class="w-full max-w-lg sm:max-w-xl md:max-w-2xl lg:max-w-3xl flex flex-col gap-1 pt-0.5 pb-1 border-b border-stone-800/80 shrink-0 z-20 bg-neutral-950/95">
       <div class="flex items-center justify-between gap-1.5 sm:gap-2">
         <div class="flex items-center gap-1.5 sm:gap-2">
@@ -103,7 +103,7 @@
         </div>
 
         <div class="flex items-center gap-1 sm:gap-1.5">
-          <!-- 경과 시간 표시 -->
+          <!-- 경과 시간 타이머 -->
           <div class="bg-stone-900 border border-stone-800 px-2 py-0.5 rounded-lg flex items-center gap-1 text-[10px] sm:text-xs font-mono text-amber-300">
             <span>⏱️</span>
             <span id="timerDisplay">00:00</span>
@@ -116,7 +116,7 @@
             <button type="button" onclick="setLanguage('ru')" id="langBtn-ru" class="lang-btn px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[11px] font-semibold rounded-md sm:rounded-lg transition text-stone-400 hover:text-white">RU</button>
           </div>
 
-          <!-- 사운드 토글 -->
+          <!-- 효과음 토글 -->
           <button id="soundToggle" type="button" class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-stone-900 border border-stone-800 flex items-center justify-center text-[10px] sm:text-xs text-stone-300 hover:bg-stone-800 transition shadow" title="Sound On/Off">
             🔊
           </button>
@@ -128,11 +128,11 @@
         </div>
       </div>
 
-      <!-- 스테이지 선택 바 -->
+      <!-- 스테이지 선택 10개 버튼 -->
       <div class="w-full grid grid-cols-5 gap-1 pt-1 pb-0.5" id="stageBtnContainer"></div>
     </header>
 
-    <!-- ================= MAIN PUZZLE CONTAINER ================= -->
+    <!-- 중앙 문제 및 게임판 -->
     <main class="w-full max-w-lg sm:max-w-xl md:max-w-2xl lg:max-w-3xl flex-1 flex flex-col items-center justify-between py-1 min-h-0 z-10 overflow-hidden">
       <div class="w-full bg-stone-900/90 backdrop-blur rounded-lg sm:rounded-xl px-2 py-1 sm:px-3 sm:py-1.5 mb-1 border border-stone-800 text-center shadow shrink-0">
         <div class="inline-flex items-center gap-1 bg-amber-500/10 text-amber-400 text-[8px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full mb-0.5">
@@ -146,6 +146,7 @@
         </p>
       </div>
 
+      <!-- 조작 횟수 & 정사각형 목표 카운터 -->
       <div class="w-full grid grid-cols-2 gap-1 sm:gap-1.5 mb-1 shrink-0">
         <div class="bg-stone-900/80 rounded-lg sm:rounded-xl px-2 py-1 border border-stone-800/80 flex items-center justify-between">
           <div>
@@ -170,7 +171,7 @@
         </div>
       </div>
 
-      <!-- SVG PUZZLE BOARD -->
+      <!-- 퍼즐 SVG 보드 -->
       <div class="w-full relative flex items-center justify-center bg-stone-900/40 rounded-xl p-1 border border-stone-800/60 shadow-xl flex-1 min-h-0 overflow-hidden" style="touch-action: manipulation;">
         <svg id="puzzleSvg" class="w-full h-full max-w-[380px] sm:max-w-[420px] md:max-w-[440px] max-h-full aspect-square block cursor-default object-contain" viewBox="0 0 500 500">
           <defs>
@@ -195,7 +196,7 @@
         </svg>
       </div>
 
-      <!-- 긴 스틱 -->
+      <!-- 성냥개비 점화 인디케이터 스틱 -->
       <div class="w-full max-w-[440px] mt-1 px-1 shrink-0">
         <div class="flex items-center justify-between text-[8px] sm:text-[10px] font-bold text-stone-500 mb-0.5 px-1">
           <span class="flex items-center gap-1">
@@ -212,7 +213,7 @@
       </div>
     </main>
 
-    <!-- ================= BOTTOM ACTION CONTROLS ================= -->
+    <!-- 하단 조작 버튼 바 -->
     <footer class="w-full max-w-lg sm:max-w-xl md:max-w-2xl lg:max-w-3xl pb-1 pt-0.5 shrink-0">
       <div class="grid grid-cols-3 gap-1 sm:gap-1.5">
         <button id="undoBtn" type="button" class="group flex flex-col items-center justify-center p-1 sm:p-1.5 rounded-lg sm:rounded-xl bg-stone-900 border border-stone-800 hover:bg-stone-800 active:scale-95 transition shadow touch-manipulation">
@@ -234,12 +235,11 @@
     </footer>
   </div>
 
-  <!-- ================= 모바일 배경 오버레이 ================= -->
+  <!-- 모바일 배경 오버레이 (클릭 시 닫힘) -->
   <div id="rankingOverlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden lg:hidden transition-opacity"></div>
 
   <!-- ================= 실시간 랭킹 순위표 슬라이드 패널 ================= -->
   <aside id="rankingPanel" class="fixed lg:static top-0 right-0 h-full w-[280px] sm:w-[320px] lg:w-[340px] bg-stone-900/95 lg:bg-stone-900/70 border-l border-stone-800 z-50 flex flex-col transition-transform duration-300 ease-in-out translate-x-full lg:translate-x-0 shadow-2xl lg:shadow-none shrink-0">
-    <!-- 헤더 -->
     <div class="p-3 border-b border-stone-800 flex items-center justify-between shrink-0 bg-stone-900">
       <div class="flex items-center gap-2">
         <span class="text-xl">🏆</span>
@@ -265,14 +265,14 @@
       <div class="py-8 text-center text-stone-500 text-xs">랭킹 데이터를 불러오는 중...</div>
     </div>
 
-    <!-- 푸터 (내 최고 기록) -->
+    <!-- 내 최고 완료 기록 -->
     <div class="p-2.5 bg-stone-950/80 border-t border-stone-800 text-[11px] text-stone-400 flex justify-between items-center shrink-0">
       <span class="font-medium">내 완료 기록:</span>
       <span id="myRecordDisplay" class="font-bold text-amber-400">도전 중...</span>
     </div>
   </aside>
 
-  <!-- ================= POPUP MODAL ================= -->
+  <!-- 팝업 모달 -->
   <div id="resultModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
     <div class="bg-stone-900 border border-stone-700/80 rounded-3xl p-5 sm:p-6 max-w-sm w-full text-center shadow-2xl relative">
       <div id="modalEmoji" class="text-4xl sm:text-5xl mb-2 sm:mb-3">🎉</div>
@@ -285,7 +285,7 @@
     </div>
   </div>
 
-  <!-- ================= STUDENT ENTRY MODAL ================= -->
+  <!-- 학생 정보 입력 모달 -->
   <div id="studentEntryModal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
     <div class="bg-stone-900 border border-amber-500/40 rounded-3xl p-5 sm:p-7 max-w-sm w-full text-center shadow-2xl relative shadow-amber-950/50">
       <div class="w-12 h-12 sm:w-14 sm:h-14 mx-auto mb-2 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-2xl sm:text-3xl">🏫</div>
@@ -310,9 +310,9 @@
     </div>
   </div>
 
-  <!-- ================= LOGIC SCRIPT ================= -->
+  <!-- 스크립트 로직 -->
   <script>
-    // ★ 1단계에서 발급받은 Google Apps Script 웹앱 URL을 입력하세요 ★
+    // 구글 Apps Script 배포 URL 반영
     const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwk5G4p61rmgp4WrYMJN6pSvwNWvfXu8RLMeA_KFGUWnTHHAjz2rBBP8LtoaaydkYDagw/exec";
 
     let currentStage = 1;
@@ -325,7 +325,6 @@
     const clearedStages = new Set();
     let currentStudent = { id: '', name: '' };
 
-    // 타이머 및 랭킹 상태
     let startTime = null;
     let timerInterval = null;
     let totalElapsedSeconds = 0;
@@ -410,7 +409,7 @@
       6: {
         mode: 'move', maxMoves: 3, targetSquares: 4, equalSizeOnly: true, gridSize: { rows: 3, cols: 4 }, cellSize: 86, paddingX: 78, paddingY: 120,
         title_ko: "성냥개비 3개를 옮겨 같은 크기의 정사각형 4개를 만드세요.",
-        title: { en: "Move 3 matches to make 4 equal squares.", zh: "移动3根火柴，做出4个同样大小的正方形。", ru: "Переместите 3 спички, чтобы получить 4 равных квадрата." },
+        title: { en: "Move 3 matches to make 4 equal squares.", zh: "移动3根火柴，做出4个同样大小的正方形。", ru: "Переместите 3 спички, чтобы получить 4 равных квадра타." },
         matches: ['H_0_0', 'H_0_2', 'V_0_0', 'V_0_1', 'V_0_2', 'V_0_3', 'H_1_0', 'H_1_1', 'H_1_2', 'V_1_0', 'V_1_1', 'V_1_2', 'V_1_3', 'H_2_0', 'H_2_1', 'H_2_2']
       },
       7: {
@@ -460,7 +459,6 @@
       } catch (e) {}
     }
 
-    // ================== 타이머 관리 ==================
     function startTimer() {
       if (timerInterval) return;
       startTime = Date.now() - (totalElapsedSeconds * 1000);
@@ -481,18 +479,10 @@
       if (el) el.textContent = formatTime(totalElapsedSeconds);
     }
 
-    // ================== 실시간 랭킹 API 연동 ==================
+    // Google Apps Script 랭킹 조회
     async function fetchRankings() {
       const listEl = document.getElementById('rankingList');
-      if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.includes("여기에_구글")) {
-        listEl.innerHTML = `
-          <div class="py-6 px-3 text-center text-stone-500 space-y-2">
-            <p class="text-xs">⚠️ Google Script URL이 설정되지 않았습니다.</p>
-            <p class="text-[10px]">코드 상단의 <code class="text-amber-400">GOOGLE_SCRIPT_URL</code> 변수에 배포된 웹 앱 주소를 등록해주세요.</p>
-          </div>
-        `;
-        return;
-      }
+      if (!GOOGLE_SCRIPT_URL) return;
 
       listEl.innerHTML = '<div class="py-8 text-center text-stone-400 text-xs animate-pulse">랭킹을 갱신하는 중... 🔄</div>';
       try {
@@ -553,8 +543,9 @@
       }
     }
 
+    // Google Apps Script 점수 전송
     async function submitScore(timeSec) {
-      if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.includes("여기에_구글")) return;
+      if (!GOOGLE_SCRIPT_URL) return;
       if (!currentStudent.id || !currentStudent.name) return;
 
       try {
@@ -574,7 +565,6 @@
       }
     }
 
-    // ================== 슬롯 & 지오메트리 계산 ==================
     function rebuildSlotDefinitions() {
       ALL_SLOTS = [];
       const cfg = STAGES[currentStage];
@@ -715,7 +705,6 @@
       updateStageButtonsUI();
     }
 
-    // 10개 전체 스테이지 클리어 확인
     function checkAllStagesCompleted() {
       if (clearedStages.size === 10 && !isAllClearedSubmitted) {
         isAllClearedSubmitted = true;
@@ -724,7 +713,6 @@
         document.getElementById('myRecordDisplay').textContent = formatTime(finalTime) + " (전체 완료 🎉)";
         submitScore(finalTime);
 
-        // 모바일 화면일 때 랭킹 패널 자동 오픈
         openRankingPanel();
         showModal(
           "모든 스테이지 정복!",
@@ -922,7 +910,7 @@
       }
     }
 
-    // ================== 슬라이드 패널 제어 ==================
+    // 패널 제어
     const rankingPanel = document.getElementById('rankingPanel');
     const rankingOverlay = document.getElementById('rankingOverlay');
 
@@ -936,7 +924,6 @@
       rankingOverlay.classList.add('hidden');
     }
 
-    // ================== 이벤트 핸들러 바인딩 ==================
     function setupInteractions() {
       const svg = document.getElementById('puzzleSvg');
 
@@ -1041,7 +1028,6 @@
         document.getElementById('soundToggle').textContent = isSoundOn ? '🔊' : '🔇';
       };
 
-      // 랭킹 패널 모바일 토글 이벤트
       document.getElementById('mobileRankingToggle').onclick = openRankingPanel;
       document.getElementById('closeRankBtn').onclick = closeRankingPanel;
       rankingOverlay.onclick = closeRankingPanel;
@@ -1271,7 +1257,6 @@
       document.getElementById('modalCloseBtn').textContent = dict.btn_confirm;
     }
 
-    // ================== 초기 구동 ==================
     window.onload = function() {
       const studentModal = document.getElementById('studentEntryModal');
       const studentForm = document.getElementById('studentForm');
