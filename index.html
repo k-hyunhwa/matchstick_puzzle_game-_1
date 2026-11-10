@@ -121,7 +121,7 @@
             🔊
           </button>
 
-          <!-- 랭킹 열기 토글 버튼 (모바일 및 패널 닫혔을 때 표시) -->
+          <!-- 랭킹 열기 토글 버튼 -->
           <button id="mobileRankingToggle" type="button" class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-[11px] sm:text-xs text-amber-300 hover:bg-amber-500/30 transition shadow" title="실시간 랭킹 열기">
             🏆
           </button>
@@ -235,11 +235,10 @@
     </footer>
   </div>
 
-  <!-- 모바일 배경 오버레이 (클릭 시 닫힘) -->
+  <!-- 모바일 배경 오버레이 -->
   <div id="rankingOverlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden md:hidden transition-opacity"></div>
 
-  <!-- ================= 실시간 랭킹 순위표 슬라이드 패널 ================= -->
-  <!-- 태블릿 및 PC(md 이상)에서는 relative로 공간을 차지하며 기본 표시, 모바일에서는 fixed 슬라이드 오버레이 -->
+  <!-- 실시간 랭킹 순위표 슬라이드 패널 -->
   <aside id="rankingPanel" class="fixed md:relative top-0 right-0 h-full w-[280px] sm:w-[320px] md:w-[300px] lg:w-[340px] bg-stone-900/95 md:bg-stone-900/80 border-l border-stone-800 z-50 md:z-20 flex flex-col transition-all duration-300 ease-in-out translate-x-full md:translate-x-0 shadow-2xl md:shadow-none shrink-0">
     <div class="p-3 border-b border-stone-800 flex items-center justify-between shrink-0 bg-stone-900">
       <div class="flex items-center gap-2">
@@ -248,7 +247,7 @@
           <h2 class="text-xs sm:text-sm font-black text-amber-400 flex items-center gap-1.5">
             명예의 전당 <span class="text-[10px] font-normal text-stone-400">(상위 40위)</span>
           </h2>
-          <p class="text-[9px] text-stone-500">10개 스테이지 전체 완료 랭킹</p>
+          <p class="text-[9px] text-stone-500">실시간 스테이지 클리어 랭킹</p>
         </div>
       </div>
       <div class="flex items-center gap-1">
@@ -311,9 +310,7 @@
     </div>
   </div>
 
-  <!-- 스크립트 로직 -->
   <script>
-    // 전달받은 실제 Google Apps Script 웹앱 URL
     const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwk5G4p61rmgp4WrYMJN6pSvwNWvfXu8RLMeA_KFGUWnTHHAjz2rBBP8LtoaaydkYDagw/exec";
 
     let currentStage = 1;
@@ -365,7 +362,7 @@
         top_subtitle: "Логические головоломки со спичками",
         action_label_move_sub: "Ходы",
         action_label_remove_sub: "Удалено",
-        action_label_add_sub: "До바влено",
+        action_label_add_sub: "Добавлено",
         target_label_sub: "Квадраты",
         sub_undo: "Отмена (Ctrl+Z)",
         sub_reset: "Сброс (R)",
@@ -480,7 +477,6 @@
       if (el) el.textContent = formatTime(totalElapsedSeconds);
     }
 
-    // JSONP 응답 처리
     window.onRankingLoaded = function(data) {
       renderRankingList(data);
     };
@@ -488,7 +484,7 @@
     function renderRankingList(data) {
       const listEl = document.getElementById('rankingList');
       if (!data || !Array.isArray(data) || data.length === 0) {
-        listEl.innerHTML = '<div class="py-8 text-center text-stone-500 text-xs">아직 모든 스테이지를 완료한<br>도전자가 없습니다.<br><span class="text-amber-400">1등에 도전해 보세요!</span></div>';
+        listEl.innerHTML = '<div class="py-8 text-center text-stone-500 text-xs">아직 등록된 도전자가 없습니다.<br><span class="text-amber-400">1등에 도전해 보세요!</span></div>';
         return;
       }
 
@@ -515,6 +511,8 @@
           rankStyle += " ring-1 ring-amber-400 shadow-md shadow-amber-950/40";
         }
 
+        const clearedInfo = item.clearedCount ? `<span class="text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1 py-0.2 rounded font-bold">${item.clearedCount}개 완료</span>` : '';
+
         const row = document.createElement('div');
         row.className = `flex items-center justify-between p-2 rounded-xl border ${rankStyle} transition`;
         row.innerHTML = `
@@ -528,15 +526,17 @@
               </div>
             </div>
           </div>
-          <div class="font-mono text-[11px] font-bold text-amber-400 shrink-0">
-            ${formatTime(item.time)}
+          <div class="flex items-center gap-1.5 shrink-0">
+            ${clearedInfo}
+            <div class="font-mono text-[11px] font-bold text-amber-400">
+              ${formatTime(item.time)}
+            </div>
           </div>
         `;
         listEl.appendChild(row);
       });
     }
 
-    // Google Apps Script 랭킹 조회 (CORS 제약 방지 Fetch & JSONP 2단계 처리)
     async function fetchRankings() {
       const listEl = document.getElementById('rankingList');
       if (!GOOGLE_SCRIPT_URL) return;
@@ -551,7 +551,7 @@
           return;
         }
       } catch (err) {
-        console.warn("fetch 실패, JSONP 방식으로 폴백합니다:", err);
+        console.warn("fetch 실패, JSONP 방식으로 전환합니다:", err);
       }
 
       try {
@@ -562,7 +562,7 @@
         script.id = 'jsonpRankingScript';
         script.src = `${GOOGLE_SCRIPT_URL}?callback=onRankingLoaded&t=${Date.now()}`;
         script.onerror = () => {
-          listEl.innerHTML = '<div class="py-6 text-center text-red-400/80 text-xs">랭킹 데이터를 불러오지 못했습니다.<br>스프레드시트 배포 상태를 확인해 주세요.</div>';
+          listEl.innerHTML = '<div class="py-6 text-center text-red-400/80 text-xs">랭킹 데이터를 불러오지 못했습니다.<br>Apps Script 배포 상태를 확인해 주세요.</div>';
         };
         document.body.appendChild(script);
       } catch (e) {
@@ -575,16 +575,21 @@
       if (!GOOGLE_SCRIPT_URL) return;
       if (!currentStudent.id || !currentStudent.name) return;
 
+      const payload = {
+        studentId: currentStudent.id,
+        name: currentStudent.name,
+        stage: currentStage,
+        clearedCount: clearedStages.size,
+        time: timeSec,
+        isAllCleared: (clearedStages.size === 10)
+      };
+
       try {
         await fetch(GOOGLE_SCRIPT_URL, {
           method: 'POST',
           mode: 'no-cors',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            studentId: currentStudent.id,
-            name: currentStudent.name,
-            time: timeSec
-          })
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(payload)
         });
         setTimeout(fetchRankings, 1500);
       } catch (e) {
@@ -707,7 +712,9 @@
       const flameIcon = document.getElementById('stickFlameIcon');
 
       if (isSuccess) {
+        const isFirstClear = !clearedStages.has(currentStage);
         clearedStages.add(currentStage);
+
         container.className = "w-full h-5 sm:h-6 md:h-7 rounded-full border-2 border-amber-400 bg-stone-900 p-0.5 sm:p-1 flex items-center relative overflow-hidden transition-all duration-700 stick-glow shadow-[0_0_20px_#f59e0b]";
         fill.className = "h-full w-full rounded-full transition-all duration-700 ease-out flex items-center justify-end pr-1 relative bg-gradient-to-r from-red-600 via-amber-500 to-yellow-300 shadow-[0_0_15px_#f59e0b]";
         fill.style.width = '100%';
@@ -717,6 +724,15 @@
         percentText.textContent = "100% LIT 🔥";
         percentText.className = "text-amber-300 font-black";
         flameIcon.className = "transition-transform duration-300 scale-125 opacity-100";
+
+        // 내 완료 기록 표시 업데이트
+        document.getElementById('myRecordDisplay').textContent = `${clearedStages.size}/10 클리어 (${formatTime(totalElapsedSeconds)})`;
+
+        // 개별 스테이지 클리어 시 즉시 구글 시트 등록
+        if (isFirstClear) {
+          submitScore(totalElapsedSeconds);
+        }
+
         checkAllStagesCompleted();
       } else {
         container.className = "w-full h-5 sm:h-6 md:h-7 rounded-full border-2 border-dashed border-stone-700 bg-stone-900/60 p-0.5 sm:p-1 flex items-center relative overflow-hidden transition-all duration-500 shadow-inner";
